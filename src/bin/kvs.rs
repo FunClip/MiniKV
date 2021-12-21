@@ -1,6 +1,6 @@
 use std::process::exit;
 
-use clap::{App, Arg, SubCommand, AppSettings};
+use clap::{App, AppSettings, Arg, SubCommand};
 
 fn main() {
     let app = App::new(env!("CARGO_PKG_NAME"))
@@ -10,39 +10,41 @@ fn main() {
         .setting(AppSettings::DisableHelpSubcommand)
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .setting(AppSettings::VersionlessSubcommands)
-        .subcommand(SubCommand::with_name("set")
-            .about("Set the value of a string key to a string")
-            .arg(Arg::with_name("KEY")
-                .required(true)
-                .help("A string key"))
-            .arg(Arg::with_name("VALUE")
-                .required(true)
-                .help("A string value of the key")))
-        .subcommand(SubCommand::with_name("get")
-            .about("Get the string value of a given string key")
-            .arg(Arg::with_name("KEY")
-                .required(true)
-                .help("A string key")))
-        .subcommand(SubCommand::with_name("rm")
-            .about("Remove a given key")
-            .arg(Arg::with_name("KEY")
-                .required(true)
-                .help("A string key")))
+        .subcommand(
+            SubCommand::with_name("set")
+                .about("Set the value of a string key to a string")
+                .arg(Arg::with_name("KEY").required(true).help("A string key"))
+                .arg(
+                    Arg::with_name("VALUE")
+                        .required(true)
+                        .help("A string value of the key"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("get")
+                .about("Get the string value of a given string key")
+                .arg(Arg::with_name("KEY").required(true).help("A string key")),
+        )
+        .subcommand(
+            SubCommand::with_name("rm")
+                .about("Remove a given key")
+                .arg(Arg::with_name("KEY").required(true).help("A string key")),
+        )
         .get_matches();
-    
+
     match app.subcommand() {
         ("set", Some(_sub_m)) => {
             eprintln!("unimplemented");
             exit(1);
-        },
+        }
         ("get", Some(_sub_m)) => {
             eprintln!("unimplemented");
             exit(1);
-        },
+        }
         ("rm", Some(_sub_m)) => {
             eprintln!("unimplemented");
             exit(1);
-        },
-        _ => unreachable!()
+        }
+        _ => unreachable!(),
     }
 }
