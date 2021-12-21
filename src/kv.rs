@@ -11,7 +11,7 @@ use std::collections::HashMap;
 /// let mut store = KvStore::new();
 /// store.set(String::from("key"), String::from("value"));
 /// let val = store.get(String::from("key"));
-/// assert_eq!(val, Some(String::from("key")));
+/// assert_eq!(val, Some(String::from("value")));
 /// ```
 pub struct KvStore {
     map: HashMap<String, String>
