@@ -1,7 +1,7 @@
 use std::process::exit;
 
-use structopt::StructOpt;
 use structopt::clap::AppSettings;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = env!("CARGO_PKG_NAME"),
@@ -39,21 +39,21 @@ enum SubCommand {
         /// A string key
         #[structopt(name = "KEY")]
         key: String,
-    }
+    },
 }
 
 fn main() {
     let opt = Opt::from_args();
     match opt.sub_command {
-        SubCommand::Set{key: _, value: _} => {
+        SubCommand::Set { key: _, value: _ } => {
             eprintln!("unimplemented");
             exit(1);
         }
-        SubCommand::Get{key: _} => {
+        SubCommand::Get { key: _ } => {
             eprintln!("unimplemented");
             exit(1);
         }
-        SubCommand::Rm{key: _} => {
+        SubCommand::Rm { key: _ } => {
             eprintln!("unimplemented");
             exit(1);
         }
