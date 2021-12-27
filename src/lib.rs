@@ -2,9 +2,9 @@
 
 //! A simle key-value store
 
-mod kv;
 mod err;
+mod kv;
 
-pub use kv::KvStore;
-pub use err::Result;
 pub use err::KvsError;
+pub use err::Result;
+pub use kv::KvStore;

@@ -1,5 +1,5 @@
-use std::{io, fmt};
 use serde::de::value;
+use std::{fmt, io};
 use thiserror::Error;
 
 /// Alias for a `Result` with the error type `kvs::KvsError`.
