@@ -1,3 +1,4 @@
+use std::env::current_dir;
 use std::process::exit;
 
 use structopt::clap::AppSettings;
@@ -42,20 +43,32 @@ enum SubCommand {
     },
 }
 
-fn main() {
+fn main() -> kvs::Result<()> {
     let opt = Opt::from_args();
     match opt.sub_command {
-        SubCommand::Set { key: _, value: _ } => {
-            eprintln!("unimplemented");
-            exit(1);
+        SubCommand::Set { key, value } => {
+            let mut store = kvs::KvStore::open(current_dir()?)?;
+            store.set(key, value)?;
         }
-        SubCommand::Get { key: _ } => {
-            eprintln!("unimplemented");
-            exit(1);
+        SubCommand::Get { key } => {
+            let store = kvs::KvStore::open(current_dir()?)?;
+            match store.get(key) {
+                Ok(Some(value)) => print!("{}", value),
+                Ok(None) | Err(kvs::KvsError::KeyNotFound) => print!("Key not found"),
+                Err(e) => return Err(e),
+            }
         }
-        SubCommand::Rm { key: _ } => {
-            eprintln!("unimplemented");
-            exit(1);
+        SubCommand::Rm { key } => {
+            let mut store = kvs::KvStore::open(current_dir()?)?;
+            match store.remove(key) {
+                Err(kvs::KvsError::KeyNotFound) => {
+                    print!("Key not found");
+                    exit(1);
+                }
+                other => return other,
+            }
         }
     }
+
+    Ok(())
 }
