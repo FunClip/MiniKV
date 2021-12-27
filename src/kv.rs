@@ -1,6 +1,12 @@
+use std::fs::{File, self};
+use std::io::{BufWriter, Write, Seek, Read, BufReader, SeekFrom};
 use std::{collections::HashMap, path::PathBuf};
+use serde::{Serialize, Deserialize};
+
 use crate::Result;
 use crate::err::KvsError;
+
+const COMPACTION_THRESHOLD: u64 = 1024;
 
 /// The `KvStore` stores key-value pairs
 ///
@@ -15,18 +21,15 @@ use crate::err::KvsError;
 /// let val = store.get(String::from("key"));
 /// assert_eq!(val, Some(String::from("value")));
 /// ```
-#[derive(Default)]
 pub struct KvStore {
+    writer: BufWriter<File>,
+    readers: Vec<BufReader<File>>,
+    current: usize,
     map: HashMap<String, String>,
+    uncompacted: u64,
 }
 
 impl KvStore {
-    /// Create a `KvStore`
-    pub fn new() -> KvStore {
-        KvStore {
-            map: HashMap::new(),
-        }
-    }
 
     /// Set the value of a string key to a string.
     ///
@@ -62,8 +65,26 @@ impl KvStore {
     /// 
     /// 
     pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
-        Ok(KvStore {
-            map: HashMap::new(),
-        })
+        fs::create_dir_all(path.into())?;
+
+        todo!()
     }
+}
+
+
+/// Command log object for store
+#[derive(Debug, Serialize, Deserialize)]
+enum Command {
+    /// Set the value of a string key to a string
+    Set {
+        /// A string key
+        key: String,
+        /// A string value of the key
+        value: String,
+    },
+    /// Remove a given key
+    Rm {
+        /// A string key
+        key: String,
+    },
 }

@@ -145,6 +145,7 @@ dependencies = [
  "assert_cmd",
  "predicates",
  "serde",
+ "serde_json",
  "structopt",
  "tempfile",
  "thiserror",
