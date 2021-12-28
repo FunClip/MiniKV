@@ -82,21 +82,18 @@ impl KvStore {
 
     /// Remove a given key.
     pub fn remove(&mut self, key: String) -> Result<()> {
-        if let None = self.index.get(&key) {
-            return Err(KvsError::KeyNotFound);
+        match self.index.remove(&key) {
+            Some(pos) => {
+                let mut cmd = serde_json::to_string(&Command::Rm { key: key.clone() })?;
+                cmd += "\n";
+                self.writer.stream_position()?;
+                let size = self.writer.write(cmd.as_bytes())?;
+                self.writer.flush()?;
+                self.uncompacted += pos.size + size as u64;
+                Ok(())
+            }
+            None => Err(KvsError::KeyNotFound)
         }
-
-        let mut cmd = serde_json::to_string(&Command::Rm { key: key.clone() })?;
-        cmd += "\n";
-        self.writer.stream_position()?;
-        let size = self.writer.write(cmd.as_bytes())?;
-        self.writer.flush()?;
-
-        if let Some(pos) = self.index.remove(&key) {
-            self.uncompacted += pos.size + size as u64;
-        }
-
-        Ok(())
     }
 
     /// Open a `KvStore` with the given path.
@@ -193,8 +190,7 @@ fn load_index_from_readers(
     index: &mut BTreeMap<String, Postion>,
 ) -> Result<u64> {
     let mut uncompacted = 0u64;
-    let mut i = 0u64;
-    for reader in readers {
+    for (i, reader) in readers.iter_mut().enumerate() {
         loop {
             let mut buf = String::new();
             let position = reader.stream_position()?;
@@ -207,8 +203,8 @@ fn load_index_from_readers(
                     if let Some(pos) = index.insert(
                         key,
                         Postion {
-                            file: i,
-                            position: position,
+                            file: i as u64,
+                            position,
                             size: size as u64,
                         },
                     ) {
@@ -222,7 +218,6 @@ fn load_index_from_readers(
                 }
             }
         }
-        i += 1;
     }
 
     Ok(uncompacted)
