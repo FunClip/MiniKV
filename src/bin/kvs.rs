@@ -51,10 +51,13 @@ fn main() -> kvs::Result<()> {
             store.set(key, value)?;
         }
         SubCommand::Get { key } => {
-            let store = kvs::KvStore::open(current_dir()?)?;
+            let mut store = kvs::KvStore::open(current_dir()?)?;
             match store.get(key) {
                 Ok(Some(value)) => print!("{}", value),
-                Ok(None) | Err(kvs::KvsError::KeyNotFound) => print!("Key not found"),
+                Ok(None) | Err(kvs::KvsError::KeyNotFound) => {
+                    print!("Key not found");
+                    exit(0);
+                }
                 Err(e) => return Err(e),
             }
         }

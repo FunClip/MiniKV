@@ -1,4 +1,4 @@
-use serde::de::value;
+use serde_json::error;
 use std::{fmt, io};
 use thiserror::Error;
 
@@ -13,7 +13,7 @@ pub enum KvsError {
     Io(#[from] io::Error),
     /// Decode errors
     #[error("Decode errors")]
-    Parser(#[from] value::Error),
+    Parser(#[from] error::Error),
     /// Encode errors
     #[error("Encode errors")]
     Format(#[from] fmt::Error),
