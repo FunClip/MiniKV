@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
-use std::io::{BufReader, BufWriter, Seek, BufRead, SeekFrom, Write};
+use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -37,18 +37,24 @@ impl KvStore {
     ///
     /// If the key exists, the value will be overwritten.
     pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        let mut cmd = serde_json::to_string(&Command::Set{key: key.clone(), value})?;
+        let mut cmd = serde_json::to_string(&Command::Set {
+            key: key.clone(),
+            value,
+        })?;
         cmd += "\n";
         let position = self.writer.stream_position()?;
         let size = self.writer.write(cmd.as_bytes())?;
         let file = self.current - 1;
         self.writer.flush()?;
 
-        if let Some(pos) = self.index.insert(key, Postion{
-            file,
-            position,
-            size: size as u64
-        }) {
+        if let Some(pos) = self.index.insert(
+            key,
+            Postion {
+                file,
+                position,
+                size: size as u64,
+            },
+        ) {
             self.uncompacted += pos.size;
         }
 
@@ -66,10 +72,10 @@ impl KvStore {
                 reader.seek(SeekFrom::Start(pos.position))?;
                 reader.read_line(&mut buf)?;
                 match serde_json::from_str(&buf).unwrap() {
-                    Command::Set{key: _, value} => Ok(Some(value)),
-                    Command::Rm{key: _} => unreachable!()
+                    Command::Set { key: _, value } => Ok(Some(value)),
+                    Command::Rm { key: _ } => unreachable!(),
                 }
-            },
+            }
             None => Ok(None),
         }
     }
@@ -77,10 +83,10 @@ impl KvStore {
     /// Remove a given key.
     pub fn remove(&mut self, key: String) -> Result<()> {
         if let None = self.index.get(&key) {
-            return Err(KvsError::KeyNotFound)
+            return Err(KvsError::KeyNotFound);
         }
-        
-        let mut cmd = serde_json::to_string(&Command::Rm{key: key.clone()})?;
+
+        let mut cmd = serde_json::to_string(&Command::Rm { key: key.clone() })?;
         cmd += "\n";
         self.writer.stream_position()?;
         let size = self.writer.write(cmd.as_bytes())?;
@@ -113,31 +119,32 @@ impl KvStore {
         // create BufReader from files
         for file in &files {
             current += 1;
-            readers.push(BufReader::new(
-                File::open(file)?
-            ))
+            readers.push(BufReader::new(File::open(file)?))
         }
 
         // build index from readers
         uncompacted += load_index_from_readers(&mut readers, &mut index)?;
 
         // create BufWriter
-        let mut writer = if current == 0 || readers[(current - 1) as usize].stream_position()? > BLOCK_THRESHOLD {
+        let mut writer = if current == 0
+            || readers[(current - 1) as usize].stream_position()? > BLOCK_THRESHOLD
+        {
             current += 1;
             let f_w = File::create(&path.join(format!("{}.log", current)))?;
             let f_r = File::open(&path.join(format!("{}.log", current)))?;
             readers.push(BufReader::new(f_r));
             BufWriter::new(f_w)
-        }
-        else {
+        } else {
             BufWriter::new(
-                File::options().write(true).open(&files[(current - 1)as usize])?
+                File::options()
+                    .write(true)
+                    .open(&files[(current - 1) as usize])?,
             )
         };
 
         writer.seek(SeekFrom::End(0))?;
 
-        Ok(KvStore{
+        Ok(KvStore {
             writer,
             readers,
             current,
@@ -181,7 +188,10 @@ fn get_log_files(path: &Path) -> Result<Vec<PathBuf>> {
     Ok(log_files)
 }
 
-fn load_index_from_readers(readers: &mut Vec<BufReader<File>>, index: &mut BTreeMap<String, Postion>) -> Result<u64> {
+fn load_index_from_readers(
+    readers: &mut Vec<BufReader<File>>,
+    index: &mut BTreeMap<String, Postion>,
+) -> Result<u64> {
     let mut uncompacted = 0u64;
     let mut i = 0u64;
     for reader in readers {
@@ -193,16 +203,19 @@ fn load_index_from_readers(readers: &mut Vec<BufReader<File>>, index: &mut BTree
                 break;
             }
             match serde_json::from_str::<Command>(buf.trim_end())? {
-                Command::Set{key, value: _} => {
-                    if let Some(pos) = index.insert(key, Postion {
-                        file: i,
-                        position: position,
-                        size: size as u64,
-                    }) {
+                Command::Set { key, value: _ } => {
+                    if let Some(pos) = index.insert(
+                        key,
+                        Postion {
+                            file: i,
+                            position: position,
+                            size: size as u64,
+                        },
+                    ) {
                         uncompacted += pos.size;
                     }
                 }
-                Command::Rm{key} => {
+                Command::Rm { key } => {
                     if let Some(pos) = index.remove(&key) {
                         uncompacted += pos.size;
                     }
