@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::fs::{self, File, remove_file, copy, remove_dir_all};
+use std::fs::{self, copy, remove_dir_all, remove_file, File};
 use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::path::PathBuf;
@@ -96,7 +96,7 @@ impl KvStore {
                 self.check()?;
                 Ok(())
             }
-            None => Err(KvsError::KeyNotFound)
+            None => Err(KvsError::KeyNotFound),
         }
     }
 
@@ -157,17 +157,16 @@ impl KvStore {
 
     /// Check if compaction or new block(file) is needed
     fn check(&mut self) -> Result<()> {
-
         if self.uncompacted >= COMPACTION_THRESHOLD {
             self.compact()?;
         }
-        
+
         if self.writer.stream_position()? >= BLOCK_THRESHOLD {
             self.current += 1;
             let f_w = File::create(&self.path.join(format!("{}.log", self.current)))?;
             let f_r = File::open(&self.path.join(format!("{}.log", self.current)))?;
             self.readers.push(BufReader::new(f_r));
-            self.writer =  BufWriter::new(f_w)
+            self.writer = BufWriter::new(f_w)
         }
 
         Ok(())
@@ -175,7 +174,6 @@ impl KvStore {
 
     /// Compact current log blocks(files)
     fn compact(&mut self) -> Result<()> {
-
         let tmp_path = self.path.join("tmp");
         fs::create_dir_all(&tmp_path)?;
 
@@ -183,16 +181,17 @@ impl KvStore {
         self.writer = BufWriter::new(File::create(&tmp_path.join(format!("{}.log", block_num)))?);
 
         // Write datas currently in `index` to new logs file
-        for (_, pos) in &mut self.index {
+        for pos in &mut self.index.values_mut() {
             if self.writer.stream_position()? >= BLOCK_THRESHOLD {
                 block_num += 1;
-                self.writer = BufWriter::new(File::create(&tmp_path.join(format!("{}.log", block_num)))?);
+                self.writer =
+                    BufWriter::new(File::create(&tmp_path.join(format!("{}.log", block_num)))?);
             }
             let mut buf = String::new();
             let reader = self.readers.get_mut(pos.file as usize).unwrap();
             reader.seek(SeekFrom::Start(pos.position))?;
             reader.read_line(&mut buf)?;
-            self.writer.write(buf.as_bytes())?;
+            self.writer.write_all(buf.as_bytes())?;
             self.writer.flush()?;
         }
 
@@ -220,20 +219,20 @@ impl KvStore {
         self.uncompacted = load_index_from_readers(&mut self.readers, &mut self.index)?;
         eprintln!("uncompacted {}", &self.uncompacted);
 
-        self.writer = if self.readers[(self.current - 1) as usize].stream_position()? >= BLOCK_THRESHOLD
-        {
-            self.current += 1;
-            let f_w = File::create(&self.path.join(format!("{}.log", self.current)))?;
-            let f_r = File::open(&self.path.join(format!("{}.log", self.current)))?;
-            self.readers.push(BufReader::new(f_r));
-            BufWriter::new(f_w)
-        } else {
-            BufWriter::new(
-                File::options()
-                    .write(true)
-                    .open(&files[(self.current - 1) as usize])?,
-            )
-        };
+        self.writer =
+            if self.readers[(self.current - 1) as usize].stream_position()? >= BLOCK_THRESHOLD {
+                self.current += 1;
+                let f_w = File::create(&self.path.join(format!("{}.log", self.current)))?;
+                let f_r = File::open(&self.path.join(format!("{}.log", self.current)))?;
+                self.readers.push(BufReader::new(f_r));
+                BufWriter::new(f_w)
+            } else {
+                BufWriter::new(
+                    File::options()
+                        .write(true)
+                        .open(&files[(self.current - 1) as usize])?,
+                )
+            };
 
         self.writer.seek(SeekFrom::End(0))?;
 
