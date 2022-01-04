@@ -217,7 +217,6 @@ impl KvStore {
         }
 
         self.uncompacted = load_index_from_readers(&mut self.readers, &mut self.index)?;
-        eprintln!("uncompacted {}", &self.uncompacted);
 
         self.writer =
             if self.readers[(self.current - 1) as usize].stream_position()? >= BLOCK_THRESHOLD {
