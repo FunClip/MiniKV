@@ -1,50 +1,49 @@
 use std::env::current_dir;
 use std::process::exit;
 
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
+use clap::AppSettings;
+use clap::Parser;
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = env!("CARGO_PKG_NAME"),
+#[derive(Parser, Debug)]
+#[clap(name = env!("CARGO_PKG_NAME"),
             version = env!("CARGO_PKG_VERSION"),
             author = env!("CARGO_PKG_AUTHORS"),
             about = env!("CARGO_PKG_DESCRIPTION"),
             setting = AppSettings::DisableHelpSubcommand,
             setting = AppSettings::SubcommandRequiredElseHelp,
-            setting = AppSettings::VersionlessSubcommands,
         )]
 struct Opt {
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     sub_command: SubCommand,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 enum SubCommand {
     /// Set the value of a string key to a string
     Set {
         /// A string key
-        #[structopt(name = "KEY")]
+        #[clap(name = "KEY")]
         key: String,
         /// A string value of the key
-        #[structopt(name = "VALUE")]
+        #[clap(name = "VALUE")]
         value: String,
     },
     /// Get the string value of a given string key
     Get {
         /// A string key
-        #[structopt(name = "KEY")]
+        #[clap(name = "KEY")]
         key: String,
     },
     /// Remove a given key
     Rm {
         /// A string key
-        #[structopt(name = "KEY")]
+        #[clap(name = "KEY")]
         key: String,
     },
 }
 
 fn main() -> kvs::Result<()> {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     match opt.sub_command {
         SubCommand::Set { key, value } => {
             let mut store = kvs::KvStore::open(current_dir()?)?;
