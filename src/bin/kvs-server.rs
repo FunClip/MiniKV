@@ -1,4 +1,3 @@
-
 use std::net;
 
 use clap::Parser;
@@ -20,20 +19,14 @@ struct Opt {
     addr: net::SocketAddr,
 
     /// Sets the storage engine
-    #[clap(
-        arg_enum,
-        long,
-        value_name = "ENGINE-NAME",
-        default_value = "kvs"
-    )]
+    #[clap(arg_enum, long, value_name = "ENGINE-NAME", default_value = "kvs")]
     engine: Engine,
-    
 }
 
 #[derive(Debug, clap::ArgEnum, Clone)]
 enum Engine {
     Kvs,
-    Sled
+    Sled,
 }
 
 fn main() {
