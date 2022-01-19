@@ -67,12 +67,10 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
             if opt.engine.is_none() {
                 opt.engine = Some(en);
                 Ok(())
+            } else if opt.engine != Some(en) {
+                exit(1);
             } else {
-                if opt.engine != Some(en) {
-                    exit(1);
-                } else {
-                    Ok(())
-                }
+                Ok(())
             }
         }
         Err(e) => {
