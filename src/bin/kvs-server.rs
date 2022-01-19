@@ -3,9 +3,9 @@ use std::process::exit;
 use std::str::FromStr;
 use std::{fs, net};
 
-use clap::Parser;
 use clap::ArgEnum;
-use kvs::{Result, KvsError};
+use clap::Parser;
+use kvs::{KvsError, Result};
 
 const DEFAULT_SERVER_ADDR: &str = "127.0.0.1:4000";
 const DEFAULT_ENGINE: Engine = Engine::Kvs;
@@ -42,7 +42,7 @@ impl FromStr for Engine {
         match s {
             "kvs" => Ok(Engine::Kvs),
             "seld" => Ok(Engine::Sled),
-            _ => Err(KvsError::InValidEngine)
+            _ => Err(KvsError::InValidEngine),
         }
     }
 }
@@ -50,7 +50,7 @@ impl FromStr for Engine {
 fn main() -> Result<()> {
     let mut opt = Opt::parse();
     default_engine(&mut opt)?;
-    
+
     Ok(())
 }
 
@@ -67,12 +67,10 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
             if opt.engine.is_none() {
                 opt.engine = Some(en);
                 Ok(())
-            }
-            else {
+            } else {
                 if opt.engine != Some(en) {
                     exit(1);
-                }
-                else {
+                } else {
                     Ok(())
                 }
             }
@@ -82,6 +80,6 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
                 opt.engine = Some(DEFAULT_ENGINE);
             }
             Err(e)
-        },
+        }
     }
 }
