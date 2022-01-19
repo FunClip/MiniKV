@@ -1,6 +1,7 @@
 use std::net;
 
 use clap::Parser;
+use clap::ArgEnum;
 
 const DEFAULT_SERVER_ADDR: &str = "127.0.0.1:4000";
 
@@ -19,11 +20,11 @@ struct Opt {
     addr: net::SocketAddr,
 
     /// Sets the storage engine
-    #[clap(arg_enum, long, value_name = "ENGINE-NAME", default_value = "kvs")]
+    #[clap(arg_enum, long, value_name = "ENGINE-NAME", default_value_t = Engine::Kvs)]
     engine: Engine,
 }
 
-#[derive(Debug, clap::ArgEnum, Clone)]
+#[derive(Debug, ArgEnum, Clone)]
 enum Engine {
     Kvs,
     Sled,
@@ -31,4 +32,9 @@ enum Engine {
 
 fn main() {
     let _opt = Opt::parse();
+
+    match _opt.engine {
+        Engine::Kvs => println!("kvs"),
+        Engine::Sled => println!("sled"),
+    }
 }
