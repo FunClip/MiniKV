@@ -20,8 +20,8 @@ struct Opt {
     addr: net::SocketAddr,
 
     /// Sets the storage engine
-    #[clap(arg_enum, long, value_name = "ENGINE-NAME", default_value_t = Engine::Kvs)]
-    engine: Engine,
+    #[clap(arg_enum, long, value_name = "ENGINE-NAME")]
+    engine: Option<Engine>,
 }
 
 #[derive(Debug, ArgEnum, Clone)]
@@ -32,9 +32,4 @@ enum Engine {
 
 fn main() {
     let _opt = Opt::parse();
-
-    match _opt.engine {
-        Engine::Kvs => println!("kvs"),
-        Engine::Sled => println!("sled"),
-    }
 }
