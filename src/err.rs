@@ -20,6 +20,9 @@ pub enum KvsError {
     /// Key does not exist
     #[error("Key not found")]
     KeyNotFound,
+    /// Invalid engine
+    #[error("Invalid engine")]
+    InValidEngine,
     /// Unexpected command
     #[error("Unexpected command")]
     UnexpectedCommand,
