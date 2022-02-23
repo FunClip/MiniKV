@@ -1,5 +1,8 @@
 use std::env::current_dir;
 use std::fmt::Display;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
 use std::{fs, net};
@@ -87,6 +90,7 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
 
     if !engine_file.exists() && opt.engine.is_none() {
         opt.engine = Some(DEFAULT_ENGINE);
+        save_selected_engine(&engine_file, &DEFAULT_ENGINE)?;
         return Ok(());
     }
 
@@ -96,16 +100,21 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
                 opt.engine = Some(en);
                 Ok(())
             } else if opt.engine != Some(en) {
+                eprintln!("currently selected engine is inconsistent with the persisted data engine");
                 exit(1);
             } else {
                 Ok(())
             }
         }
-        Err(e) => {
-            if opt.engine.is_none() {
-                opt.engine = Some(DEFAULT_ENGINE);
-            }
-            Err(e)
+        Err(_) => {
+            eprintln!("The current persistent data engine is invalid");
+            exit(1);
         }
     }
+}
+
+fn save_selected_engine(path: impl Into<PathBuf>, engine: &Engine) -> Result<()> {
+    let mut writer = BufWriter::new(File::create(path.into())?);
+    writer.write(format!("{}", engine).as_bytes())?;
+    Ok(())
 }
