@@ -17,6 +17,9 @@ pub enum KvsError {
     /// Encode errors
     #[error("Encode errors")]
     Format(#[from] fmt::Error),
+    /// Logger initial errors
+    #[error("Logger initial errors")]
+    LoggerError(#[from] sloggers::Error),
     /// Key does not exist
     #[error("Key not found")]
     KeyNotFound,

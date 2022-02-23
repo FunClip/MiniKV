@@ -1,4 +1,5 @@
 use std::env::current_dir;
+use std::fmt::Display;
 use std::process::exit;
 use std::str::FromStr;
 use std::{fs, net};
@@ -6,6 +7,10 @@ use std::{fs, net};
 use clap::ArgEnum;
 use clap::Parser;
 use kvs::{KvsError, Result};
+
+use slog::info;
+use sloggers::terminal::{Destination, TerminalLoggerBuilder};
+use sloggers::Build;
 
 const DEFAULT_SERVER_ADDR: &str = "127.0.0.1:4000";
 const DEFAULT_ENGINE: Engine = Engine::Kvs;
@@ -47,9 +52,32 @@ impl FromStr for Engine {
     }
 }
 
+impl Display for Engine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Engine::Kvs => write!(f, "kvs"),
+            Engine::Sled => write!(f, "sled"),
+        }
+    }
+}
+
 fn main() -> Result<()> {
+    // Initialize logger
+    let mut builder = TerminalLoggerBuilder::new();
+    builder.destination(Destination::Stderr);
+
+    let logger = builder.build()?;
+
     let mut opt = Opt::parse();
     default_engine(&mut opt)?;
+
+    info!(logger, "kvs-server version: {}", env!("CARGO_PKG_VERSION"));
+    info!(
+        logger,
+        "Start on `{}` with engine `{}`",
+        opt.addr,
+        opt.engine.unwrap()
+    );
 
     Ok(())
 }
