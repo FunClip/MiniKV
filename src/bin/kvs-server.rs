@@ -100,7 +100,9 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
                 opt.engine = Some(en);
                 Ok(())
             } else if opt.engine != Some(en) {
-                eprintln!("currently selected engine is inconsistent with the persisted data engine");
+                eprintln!(
+                    "currently selected engine is inconsistent with the persisted data engine"
+                );
                 exit(1);
             } else {
                 Ok(())
@@ -115,6 +117,6 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
 
 fn save_selected_engine(path: impl Into<PathBuf>, engine: &Engine) -> Result<()> {
     let mut writer = BufWriter::new(File::create(path.into())?);
-    writer.write(format!("{}", engine).as_bytes())?;
+    writer.write_all(format!("{}", engine).as_bytes())?;
     Ok(())
 }
