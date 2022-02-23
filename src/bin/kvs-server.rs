@@ -49,7 +49,7 @@ impl FromStr for Engine {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
             "kvs" => Ok(Engine::Kvs),
-            "seld" => Ok(Engine::Sled),
+            "sled" => Ok(Engine::Sled),
             _ => Err(KvsError::InValidEngine),
         }
     }
