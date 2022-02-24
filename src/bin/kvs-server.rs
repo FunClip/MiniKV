@@ -11,7 +11,7 @@ use clap::ArgEnum;
 use clap::Parser;
 use kvs::{KvsError, Result};
 
-use slog::info;
+use slog::{info, Logger};
 use sloggers::terminal::{Destination, TerminalLoggerBuilder};
 use sloggers::Build;
 
@@ -64,25 +64,28 @@ impl Display for Engine {
     }
 }
 
-fn main() -> Result<()> {
+fn main() {
     // Initialize logger
     let mut builder = TerminalLoggerBuilder::new();
     builder.destination(Destination::Stderr);
 
-    let logger = builder.build()?;
+    let logger = builder.build().unwrap_or_else(|e| {
+        eprintln!("Create logger failed: {}", e);
+        exit(1);
+    });
 
     let mut opt = Opt::parse();
-    default_engine(&mut opt)?;
+    
+    if let Err(e) = default_engine(&mut opt) {
+        eprintln!("Create engine failed: {}", e);
+        exit(1);
+    };
 
-    info!(logger, "kvs-server version: {}", env!("CARGO_PKG_VERSION"));
-    info!(
-        logger,
-        "Start on `{}` with engine `{}`",
-        opt.addr,
-        opt.engine.unwrap()
-    );
+    if let Err(e) = run_server(logger, opt) {
+        eprintln!("Run server failed: {}", e);
+        exit(1);
+    };
 
-    Ok(())
 }
 
 fn default_engine(opt: &mut Opt) -> Result<()> {
@@ -118,5 +121,18 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
 fn save_selected_engine(path: impl Into<PathBuf>, engine: &Engine) -> Result<()> {
     let mut writer = BufWriter::new(File::create(path.into())?);
     writer.write_all(format!("{}", engine).as_bytes())?;
+    Ok(())
+}
+
+fn run_server(logger: Logger, opt: Opt) -> Result<()> {
+    info!(logger, "kvs-server version: {}", env!("CARGO_PKG_VERSION"));
+    info!(
+        logger,
+        "Start on `{}` with engine `{}`",
+        opt.addr,
+        opt.engine.unwrap()
+    );
+
+
     Ok(())
 }

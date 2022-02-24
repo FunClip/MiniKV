@@ -12,3 +12,5 @@ pub use err::KvsError;
 pub use err::Result;
 pub use kv::KvStore;
 pub use kvse::KvsEngine;
+pub use client::KvsClient;
+pub use server::KvsServer;

@@ -1,4 +1,5 @@
 use std::net;
+use std::process::exit;
 
 use clap::AppSettings;
 use clap::Parser;
@@ -61,5 +62,27 @@ enum SubCommand {
     },
 }
 fn main() {
-    let _opt = Opt::parse();
+    let opt = Opt::parse();
+    if let Err(e) = run_client(opt) {
+        eprint!("{}", e);
+        exit(1);
+    }
+}
+
+fn run_client(opt: Opt) -> kvs::Result<()> {
+    match opt.sub_command {
+        SubCommand::Set { key, value, addr } => {
+            let mut client = kvs::KvsClient::new(addr)?;
+            client.set(key, value)?;
+        }
+        SubCommand::Get { key, addr } => {
+            let mut client = kvs::KvsClient::new(addr)?;
+            client.get(key)?;
+        }
+        SubCommand::Rm { key, addr } => {
+            let mut client = kvs::KvsClient::new(addr)?;
+            client.remove(key)?;
+        }
+    }
+    Ok(())
 }
