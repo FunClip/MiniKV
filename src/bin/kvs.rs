@@ -3,6 +3,7 @@ use std::process::exit;
 
 use clap::AppSettings;
 use clap::Parser;
+use kvs::KvsEngine;
 
 #[derive(Parser, Debug)]
 #[clap(name = env!("CARGO_PKG_NAME"),

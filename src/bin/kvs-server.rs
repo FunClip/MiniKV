@@ -9,7 +9,7 @@ use std::{fs, net};
 
 use clap::ArgEnum;
 use clap::Parser;
-use kvs::{KvsError, Result};
+use kvs::{KvStore, KvsError, KvsServer, Result};
 
 use slog::{info, Logger};
 use sloggers::terminal::{Destination, TerminalLoggerBuilder};
@@ -75,7 +75,7 @@ fn main() {
     });
 
     let mut opt = Opt::parse();
-    
+
     if let Err(e) = default_engine(&mut opt) {
         eprintln!("Create engine failed: {}", e);
         exit(1);
@@ -85,7 +85,6 @@ fn main() {
         eprintln!("Run server failed: {}", e);
         exit(1);
     };
-
 }
 
 fn default_engine(opt: &mut Opt) -> Result<()> {
@@ -125,14 +124,22 @@ fn save_selected_engine(path: impl Into<PathBuf>, engine: &Engine) -> Result<()>
 }
 
 fn run_server(logger: Logger, opt: Opt) -> Result<()> {
-    info!(logger, "kvs-server version: {}", env!("CARGO_PKG_VERSION"));
-    info!(
-        logger,
-        "Start on `{}` with engine `{}`",
-        opt.addr,
-        opt.engine.unwrap()
-    );
+    let addr = opt.addr;
+    let engine = opt.engine.unwrap();
 
+    info!(logger, "kvs-server version: {}", env!("CARGO_PKG_VERSION"));
+    info!(logger, "Start on `{}` with engine `{}`", addr, engine);
+
+    let dir = current_dir()?.join("log");
+
+    match engine {
+        Engine::Kvs => {
+            KvsServer::new(&logger, KvStore::open(dir)?)?.run(addr)?;
+        }
+        Engine::Sled => {
+            KvsServer::new(&logger, KvStore::open(dir)?)?.run(addr)?;
+        }
+    }
 
     Ok(())
 }

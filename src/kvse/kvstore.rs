@@ -6,6 +6,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::err::KvsError;
+use crate::KvsEngine;
 use crate::Result;
 
 const COMPACTION_THRESHOLD: u64 = 1024;
@@ -33,11 +34,11 @@ pub struct KvStore {
     path: PathBuf,
 }
 
-impl KvStore {
+impl KvsEngine for KvStore {
     /// Set the value of a string key to a string.
     ///
     /// If the key exists, the value will be overwritten.
-    pub fn set(&mut self, key: String, value: String) -> Result<()> {
+    fn set(&mut self, key: String, value: String) -> Result<()> {
         let mut cmd = serde_json::to_string(&Command::Set {
             key: key.clone(),
             value,
@@ -67,7 +68,7 @@ impl KvStore {
     /// Get the string value of a given string key
     ///
     /// Return `None` if the key doesn't exist.
-    pub fn get(&mut self, key: String) -> Result<Option<String>> {
+    fn get(&mut self, key: String) -> Result<Option<String>> {
         match self.index.get(&key) {
             Some(pos) => {
                 let mut buf = String::new();
@@ -84,7 +85,7 @@ impl KvStore {
     }
 
     /// Remove a given key.
-    pub fn remove(&mut self, key: String) -> Result<()> {
+    fn remove(&mut self, key: String) -> Result<()> {
         match self.index.remove(&key) {
             Some(pos) => {
                 let mut cmd = serde_json::to_string(&Command::Rm { key: key.clone() })?;
@@ -99,7 +100,9 @@ impl KvStore {
             None => Err(KvsError::KeyNotFound),
         }
     }
+}
 
+impl KvStore {
     /// Open a `KvStore` with the given path.
     ///
     /// If the given path doesn't exist, it will create one.

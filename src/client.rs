@@ -1,4 +1,7 @@
-use std::{net::{TcpStream, ToSocketAddrs}, io::{Write, Read}};
+use std::{
+    io::{Read, Write},
+    net::{TcpStream, ToSocketAddrs},
+};
 
 use crate::Result;
 
@@ -19,12 +22,13 @@ impl KvsClient {
         let mut msg = "get ".to_owned();
         msg = msg + &key;
 
-        self.stream.write(msg.as_bytes())?;
+        self.stream.write_all(msg.as_bytes())?;
         self.stream.flush()?;
+        println!("Send: {}", msg);
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
-        println!("{}",buf);
+        println!("{}", buf);
 
         Ok(Some("test".to_owned()))
     }
@@ -34,12 +38,12 @@ impl KvsClient {
         let mut msg = "set ".to_owned();
         msg = msg + &key + " " + &value;
 
-        self.stream.write(msg.as_bytes())?;
+        self.stream.write_all(msg.as_bytes())?;
         self.stream.flush()?;
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
-        println!("{}",buf);
+        println!("{}", buf);
 
         Ok(())
     }
@@ -49,12 +53,12 @@ impl KvsClient {
         let mut msg = "remove ".to_owned();
         msg = msg + &key;
 
-        self.stream.write(msg.as_bytes())?;
+        self.stream.write_all(msg.as_bytes())?;
         self.stream.flush()?;
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
-        println!("{}",buf);
+        println!("{}", buf);
 
         Ok(())
     }

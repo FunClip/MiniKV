@@ -1,7 +1,10 @@
-use std::{net::{ToSocketAddrs, TcpListener}, io::{Read, BufReader, BufWriter, Write}};
+use std::{
+    io::{BufReader, BufWriter, Read, Write},
+    net::{TcpListener, ToSocketAddrs},
+};
 
 use crate::KvsEngine;
-use slog::{Logger, error};
+use slog::{debug, error, info, Logger};
 
 use crate::Result;
 
@@ -22,14 +25,22 @@ impl<'ks, E: KvsEngine> KvsServer<'ks, E> {
         let listener = TcpListener::bind(addr)?;
         for stream in listener.incoming() {
             match stream {
-                Ok(stream) => {
-                    let mut buf = String::new();
-                    let mut reader = BufReader::new(&stream);
-                    reader.read_to_string(&mut buf)?;
-                    buf = buf + " Get it!";
-                    
-                    let mut writer = BufWriter::new(&stream);
-                    writer.write(buf.as_bytes())?;
+                Ok(peer) => {
+                    info!(
+                        self.logger,
+                        "Accept connection from: {}",
+                        &peer.peer_addr().unwrap()
+                    );
+                    let mut buff = [0; 50];
+                    let mut reader = BufReader::new(&peer);
+                    let n = reader.read(&mut buff)?;
+
+                    let mut buf = String::from_utf8_lossy(&buff[0..n]);
+
+                    debug!(self.logger, "Recieved message: {}", &buf);
+                    buf += " Get it!";
+                    let mut writer = BufWriter::new(&peer);
+                    writer.write_all(buf.as_bytes())?;
                     writer.flush()?;
                 }
                 Err(e) => {

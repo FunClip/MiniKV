@@ -1,5 +1,9 @@
 use crate::Result;
 
+mod kvstore;
+
+pub use kvstore::KvStore;
+
 /// Trait for a key value storage engine
 pub trait KvsEngine {
     /// Get the value of a given key

@@ -4,13 +4,12 @@
 
 mod client;
 mod err;
-mod kv;
 mod kvse;
 mod server;
 
+pub use client::KvsClient;
 pub use err::KvsError;
 pub use err::Result;
-pub use kv::KvStore;
+pub use kvse::KvStore;
 pub use kvse::KvsEngine;
-pub use client::KvsClient;
 pub use server::KvsServer;
