@@ -1,5 +1,4 @@
 use serde::{ser, Serialize};
-use sloggers::syslog::format;
 
 use crate::{KvsError, Result};
 
