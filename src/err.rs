@@ -1,7 +1,7 @@
+use serde::{de, ser};
 use serde_json::error;
 use std::io;
 use thiserror::Error;
-use serde::{ser, de};
 
 /// Alias for a `Result` with the error type `kvs::KvsError`.
 pub type Result<T> = std::result::Result<T, KvsError>;
@@ -36,14 +36,19 @@ pub enum KvsError {
 }
 
 impl ser::Error for KvsError {
-    fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: std::fmt::Display,
+    {
         Self::Serialize(msg.to_string())
     }
 }
 
 impl de::Error for KvsError {
-    fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: std::fmt::Display,
+    {
         Self::Deserialize(msg.to_string())
     }
-
 }

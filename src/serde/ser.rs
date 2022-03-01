@@ -8,7 +8,7 @@ pub struct Serializer {
     output: String,
 }
 
-pub fn to_string<T>(value: &T) ->Result<String>
+pub fn to_string<T>(value: &T) -> Result<String>
 where
     T: Serialize,
 {
@@ -102,7 +102,8 @@ impl<'ser> ser::Serializer for &'ser mut Serializer {
 
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         value.serialize(self)
     }
 
@@ -124,13 +125,10 @@ impl<'ser> ser::Serializer for &'ser mut Serializer {
         Ok(())
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
-        self,
-        name: &'static str,
-        value: &T,
-    ) -> Result<Self::Ok>
+    fn serialize_newtype_struct<T: ?Sized>(self, name: &'static str, value: &T) -> Result<Self::Ok>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         self.output += name;
         self.output += ":";
         value.serialize(self)
@@ -144,7 +142,8 @@ impl<'ser> ser::Serializer for &'ser mut Serializer {
         value: &T,
     ) -> Result<Self::Ok>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         self.output += variant;
         self.output += ":";
         value.serialize(self)
@@ -158,7 +157,11 @@ impl<'ser> ser::Serializer for &'ser mut Serializer {
         unimplemented!("Unsupported type `tuple`")
     }
 
-    fn serialize_tuple_struct(self, name: &'static str, _len: usize) -> Result<Self::SerializeTupleStruct> {
+    fn serialize_tuple_struct(
+        self,
+        name: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeTupleStruct> {
         unimplemented!("Unsupported type `tuple_struct: {}`", name)
     }
 
@@ -176,11 +179,7 @@ impl<'ser> ser::Serializer for &'ser mut Serializer {
         unimplemented!("Unsupported type `map`")
     }
 
-    fn serialize_struct(
-        self,
-        _name: &'static str,
-        _len: usize,
-    ) -> Result<Self::SerializeStruct> {
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
         Ok(self)
     }
 
@@ -204,7 +203,8 @@ impl<'ser> ser::SerializeSeq for &'ser mut Serializer {
 
     fn serialize_element<T: ?Sized>(&mut self, _value: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         unimplemented!("Unsupported type `seq`")
     }
 
@@ -220,7 +220,8 @@ impl<'ser> ser::SerializeTuple for &'ser mut Serializer {
 
     fn serialize_element<T: ?Sized>(&mut self, _value: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         unimplemented!("Unsupported type `tuple`")
     }
 
@@ -236,7 +237,8 @@ impl<'ser> ser::SerializeTupleStruct for &'ser mut Serializer {
 
     fn serialize_field<T: ?Sized>(&mut self, _value: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         unimplemented!("Unsupported type `tuple_struct`")
     }
 
@@ -252,7 +254,8 @@ impl<'ser> ser::SerializeTupleVariant for &'ser mut Serializer {
 
     fn serialize_field<T: ?Sized>(&mut self, _value: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         unimplemented!("Unsupported type `tuple_variant`")
     }
 
@@ -268,13 +271,15 @@ impl<'ser> ser::SerializeMap for &'ser mut Serializer {
 
     fn serialize_key<T: ?Sized>(&mut self, _key: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         unimplemented!("Unsupported type `map`")
     }
 
     fn serialize_value<T: ?Sized>(&mut self, _value: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         unimplemented!("Unsupported type `map`")
     }
 
@@ -288,13 +293,10 @@ impl<'ser> ser::SerializeStruct for &'ser mut Serializer {
 
     type Error = KvsError;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        key: &'static str,
-        value: &T,
-    ) -> Result<()>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         self.output += key;
         self.output += ":";
         value.serialize(&mut **self)?;
@@ -313,13 +315,10 @@ impl<'ser> ser::SerializeStructVariant for &'ser mut Serializer {
 
     type Error = KvsError;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        key: &'static str,
-        value: &T,
-    ) -> Result<()>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: Serialize {
+        T: Serialize,
+    {
         self.output += key;
         self.output += ":";
         value.serialize(&mut **self)?;
@@ -337,9 +336,12 @@ impl<'ser> ser::SerializeStructVariant for &'ser mut Serializer {
 fn test_request() {
     use crate::Request;
 
-    let r = Request::Set{key: "hello".to_owned(), value: "world".to_owned()};
+    let r = Request::Set {
+        key: "hello".to_owned(),
+        value: "world".to_owned(),
+    };
     let s = "Set#\r\nkey:+5+hello\r\nvalue:+5+world\r\n\r\n";
-    println!("{}",to_string(&r).unwrap());
+    println!("{}", to_string(&r).unwrap());
 
-    assert_eq!(to_string(&r).unwrap(),s.to_owned());
+    assert_eq!(to_string(&r).unwrap(), s.to_owned());
 }

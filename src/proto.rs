@@ -1,6 +1,4 @@
-use serde::{Serialize, Deserialize};
-
-
+use serde::{Deserialize, Serialize};
 
 /// Request from client to server
 #[derive(Debug, Serialize, Deserialize)]

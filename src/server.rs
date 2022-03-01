@@ -1,6 +1,6 @@
 use std::{
     io::{BufReader, BufWriter, Read, Write},
-    net::{TcpListener, ToSocketAddrs, TcpStream},
+    net::{TcpListener, TcpStream, ToSocketAddrs},
 };
 
 use crate::KvsEngine;
