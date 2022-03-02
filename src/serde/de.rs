@@ -31,7 +31,7 @@ impl<'de> Deserializer<'de> {
         self.input
             .chars()
             .next()
-            .ok_or(KvsError::Deserialize("EOF".to_owned()))
+            .ok_or_else(|| KvsError::Deserialize("EOF".to_owned()))
     }
 
     fn next_char(&mut self) -> Result<char> {
@@ -65,15 +65,8 @@ impl<'de> Deserializer<'de> {
         }
         let mut len: usize = 0;
         let mut input_chars = self.input.chars();
-        loop {
-            match input_chars.next() {
-                Some('a'..='z' | 'A'..='Z' | '_') => {
-                    len += 1;
-                }
-                _ => {
-                    break;
-                }
-            }
+        while let Some('a'..='z' | 'A'..='Z' | '_') = input_chars.next() {
+            len += 1;
         }
         let s = &self.input[..len];
         self.input = &self.input[len..];
@@ -221,6 +214,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: de::Visitor<'de>,
     {
         if self.input.starts_with("+0+") {
+            self.input = &self.input[3..];
             visitor.visit_none()
         } else {
             visitor.visit_some(self)
@@ -447,4 +441,39 @@ fn test_request() {
     println!("{:?}", from_str::<Request>(s));
 
     assert_eq!(r, from_str::<Request>(s).unwrap());
+}
+
+#[test]
+fn test_request2() {
+    use crate::Request;
+
+    let r = Request::Get {
+        key: "hello".to_owned(),
+    };
+    let s = "Get#\r\nkey:+5+hello\r\n\r\n";
+    println!("{:?}", r);
+    println!("{:?}", from_str::<Request>(s));
+
+    assert_eq!(r, from_str::<Request>(s).unwrap());
+}
+
+#[test]
+fn test_serde() {
+    let r = crate::Request::Get {
+        key: "hello".to_owned(),
+    };
+
+    assert_eq!(
+        r,
+        from_str(crate::serde::to_string(&r).unwrap().as_ref()).unwrap()
+    )
+}
+
+#[test]
+fn test_response() {
+    let s = "Success#\r\nresult:+0+\r\n\r\n";
+
+    let r = crate::Response::Success { result: None };
+
+    assert_eq!(r, from_str::<crate::Response>(s).unwrap())
 }

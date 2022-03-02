@@ -3,6 +3,7 @@ use std::process::exit;
 
 use clap::AppSettings;
 use clap::Parser;
+use kvs::KvsError;
 
 const DEFAULT_SERVER_ADDR: &str = "127.0.0.1:4000";
 
@@ -74,14 +75,20 @@ fn run_client(opt: Opt) -> kvs::Result<()> {
         SubCommand::Set { key, value, addr } => {
             let mut client = kvs::KvsClient::new(addr)?;
             client.set(key, value)?;
+            println!("Set success!");
         }
         SubCommand::Get { key, addr } => {
             let mut client = kvs::KvsClient::new(addr)?;
-            client.get(key)?;
+            if let Some(value) = client.get(key)? {
+                println!("The value is: {}", value);
+            } else {
+                return Err(KvsError::KeyNotFound);
+            }
         }
         SubCommand::Rm { key, addr } => {
             let mut client = kvs::KvsClient::new(addr)?;
             client.remove(key)?;
+            println!("Remove success!");
         }
     }
     Ok(())

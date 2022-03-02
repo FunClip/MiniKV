@@ -21,6 +21,9 @@ pub enum KvsError {
     /// Command deserialize error
     #[error("Command deserialize error: {0}")]
     Deserialize(String),
+    /// Server error
+    #[error("Commands execute on server failed: {0}")]
+    Server(String),
     /// Logger initial errors
     #[error("Logger initial errors: {0:?}")]
     LoggerError(#[from] sloggers::Error),

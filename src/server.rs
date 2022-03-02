@@ -3,8 +3,8 @@ use std::{
     net::{TcpListener, TcpStream, ToSocketAddrs},
 };
 
-use crate::KvsEngine;
-use slog::{debug, error, info, Logger};
+use crate::{serde, KvsEngine, Request, Response};
+use slog::{error, info, Logger};
 
 use crate::Result;
 
@@ -44,17 +44,39 @@ impl<'ks, E: KvsEngine> KvsServer<'ks, E> {
 
     /// Tcp handle
     fn handler(&mut self, stream: &TcpStream) -> Result<()> {
-        let mut buff = [0; 50];
+        let mut buff = [0; 1024];
         let mut reader = BufReader::new(stream);
         let n = reader.read(&mut buff)?;
 
-        let mut buf = String::from_utf8_lossy(&buff[0..n]);
+        let buf = String::from_utf8_lossy(&buff[..n]);
 
-        debug!(self.logger, "Recieved message: {}", &buf);
-        buf += " Get it!";
+        info!(self.logger, "Recieved: {:?}", &buf);
+
+        let response = match self.execute(serde::from_str(&buf)?) {
+            Ok(result) => Response::Success { result },
+            Err(e) => Response::Fail {
+                message: format!("{}", e),
+            },
+        };
+
         let mut writer = BufWriter::new(stream);
-        writer.write_all(buf.as_bytes())?;
+        writer.write_all(serde::to_string(&response)?.as_bytes())?;
         writer.flush()?;
         Ok(())
+    }
+
+    /// Execute command on store engine
+    fn execute(&mut self, request: Request) -> Result<Option<String>> {
+        match request {
+            Request::Get { key } => Ok(self.engine.get(key)?),
+            Request::Set { key, value } => {
+                self.engine.set(key, value)?;
+                Ok(None)
+            }
+            Request::Rm { key } => {
+                self.engine.remove(key)?;
+                Ok(None)
+            }
+        }
     }
 }

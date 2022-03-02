@@ -344,3 +344,16 @@ fn test_request() {
 
     assert_eq!(to_string(&r).unwrap(), s.to_owned());
 }
+
+#[test]
+fn test_request2() {
+    use crate::Request;
+
+    let r = Request::Get {
+        key: "hello".to_owned(),
+    };
+    let s = "Get#\r\nkey:+5+hello\r\n\r\n";
+    println!("{}", to_string(&r).unwrap());
+
+    assert_eq!(to_string(&r).unwrap(), s.to_owned());
+}

@@ -3,7 +3,7 @@ use std::{
     net::{TcpStream, ToSocketAddrs},
 };
 
-use crate::Result;
+use crate::{serde, KvsError, Request, Response, Result};
 
 /// Key value store client
 pub struct KvsClient {
@@ -19,47 +19,49 @@ impl KvsClient {
 
     /// Get the value of a given key from the server
     pub fn get(&mut self, key: String) -> Result<Option<String>> {
-        let mut msg = "get ".to_owned();
-        msg = msg + &key;
+        let request = Request::Get { key };
 
-        self.stream.write_all(msg.as_bytes())?;
+        self.stream
+            .write_all(serde::to_string(&request)?.as_bytes())?;
         self.stream.flush()?;
-        println!("Send: {}", msg);
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
-        println!("{}", buf);
-
-        Ok(Some("test".to_owned()))
+        match serde::from_str(&buf)? {
+            Response::Success { result } => Ok(result),
+            Response::Fail { message } => Err(KvsError::Server(message)),
+        }
     }
 
     /// Set the value of a given key in the server
     pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        let mut msg = "set ".to_owned();
-        msg = msg + &key + " " + &value;
+        let request = Request::Set { key, value };
 
-        self.stream.write_all(msg.as_bytes())?;
+        self.stream
+            .write_all(serde::to_string(&request)?.as_bytes())?;
         self.stream.flush()?;
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
-        println!("{}", buf);
-
-        Ok(())
+        match serde::from_str(&buf)? {
+            Response::Success { result: _ } => Ok(()),
+            Response::Fail { message } => Err(KvsError::Server(message)),
+        }
     }
 
     /// Remove the given key in the server
     pub fn remove(&mut self, key: String) -> Result<()> {
-        let mut msg = "remove ".to_owned();
-        msg = msg + &key;
+        let request = Request::Rm { key };
 
-        self.stream.write_all(msg.as_bytes())?;
+        self.stream
+            .write_all(serde::to_string(&request)?.as_bytes())?;
         self.stream.flush()?;
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
-        println!("{}", buf);
-
-        Ok(())
+        match serde::from_str(&buf)? {
+            Response::Success { result: _ } => Ok(()),
+            Response::Fail { message } => Err(KvsError::Server(message)),
+        }
     }
 }
