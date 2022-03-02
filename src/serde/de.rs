@@ -1,6 +1,5 @@
-
-use serde::Deserialize;
 use serde::de;
+use serde::Deserialize;
 
 use crate::{KvsError, Result};
 
@@ -16,7 +15,7 @@ impl<'de> Deserializer<'de> {
 
 pub fn from_str<'a, T>(s: &'a str) -> Result<T>
 where
-    T: Deserialize<'a>
+    T: Deserialize<'a>,
 {
     let mut deserializer = Deserializer::from_str(s);
     let t = T::deserialize(&mut deserializer)?;
@@ -29,7 +28,10 @@ where
 
 impl<'de> Deserializer<'de> {
     fn peek_char(&mut self) -> Result<char> {
-        self.input.chars().next().ok_or(KvsError::Deserialize("EOF".to_owned()))
+        self.input
+            .chars()
+            .next()
+            .ok_or(KvsError::Deserialize("EOF".to_owned()))
     }
 
     fn next_char(&mut self) -> Result<char> {
@@ -52,9 +54,7 @@ impl<'de> Deserializer<'de> {
                     int *= usize::from(10u8);
                     int += usize::from(ch as u8 - b'0');
                 }
-                _ => {
-                    return Ok(int)
-                }
+                _ => return Ok(int),
             }
         }
     }
@@ -99,109 +99,127 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 
     fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_bool<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_i8<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_i16<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_i32<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_i64<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_u8<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_u16<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_u32<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_u64<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_f32<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_f64<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_char<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         visitor.visit_borrowed_str(self.parse_string()?)
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         visitor.visit_string(self.parse_string()?.to_owned())
     }
 
     fn deserialize_bytes<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_byte_buf<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         if self.input.starts_with("+0+") {
             visitor.visit_none()
         } else {
@@ -211,39 +229,36 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 
     fn deserialize_unit<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
-    fn deserialize_unit_struct<V>(
-        self,
-        _name: &'static str,
-        _visitor: V,
-    ) -> Result<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
-    fn deserialize_newtype_struct<V>(
-        self,
-        _name: &'static str,
-        _visitor: V,
-    ) -> Result<V::Value>
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
@@ -254,13 +269,15 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         _visitor: V,
     ) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
     fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 
@@ -271,7 +288,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         visitor.visit_map(NewLineSeparated::new(self, fields.len()))
     }
 
@@ -282,19 +300,22 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
-        visitor.visit_enum(Enum::new(self)) 
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_enum(Enum::new(self))
     }
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         visitor.visit_borrowed_str(self.parse_token()?)
     }
 
     fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de> {
+        V: de::Visitor<'de>,
+    {
         unimplemented!()
     }
 }
@@ -338,7 +359,9 @@ impl<'de, 'a> de::MapAccess<'de> for NewLineSeparated<'a, 'de> {
         if self.de.next_char()? == '\r' && self.de.next_char()? == '\n' {
             Ok(val)
         } else {
-            Err(KvsError::Deserialize("Exceped NewLine after value".to_owned()))
+            Err(KvsError::Deserialize(
+                "Exceped NewLine after value".to_owned(),
+            ))
         }
     }
 }
@@ -362,10 +385,15 @@ impl<'de, 'a> de::EnumAccess<'de> for Enum<'a, 'de> {
         V: de::DeserializeSeed<'de>,
     {
         let val = seed.deserialize(&mut *self.de)?;
-        if self.de.next_char()? == '#' && self.de.next_char()? == '\r' && self.de.next_char()? == '\n' {
+        if self.de.next_char()? == '#'
+            && self.de.next_char()? == '\r'
+            && self.de.next_char()? == '\n'
+        {
             Ok((val, self))
         } else {
-            Err(KvsError::Deserialize("Excepted Variant Struct Mark".to_owned()))
+            Err(KvsError::Deserialize(
+                "Excepted Variant Struct Mark".to_owned(),
+            ))
         }
     }
 }
@@ -391,11 +419,7 @@ impl<'de, 'a> de::VariantAccess<'de> for Enum<'a, 'de> {
         unimplemented!()
     }
 
-    fn struct_variant<V>(
-        self,
-        fields: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value>
+    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -403,7 +427,9 @@ impl<'de, 'a> de::VariantAccess<'de> for Enum<'a, 'de> {
         if self.de.next_char()? == '\r' && self.de.next_char()? == '\n' {
             val
         } else {
-            Err(KvsError::Deserialize("Exceped NewLine after enum variant".to_owned()))
+            Err(KvsError::Deserialize(
+                "Exceped NewLine after enum variant".to_owned(),
+            ))
         }
     }
 }
