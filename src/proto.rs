@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Request from client to server
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Request {
     /// Set the value of a string key to a string
     Set {
@@ -23,7 +23,7 @@ pub enum Request {
 }
 
 /// Request from client to server
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Response {
     /// Success status
     Success {
