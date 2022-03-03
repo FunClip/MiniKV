@@ -1,6 +1,6 @@
 use std::{
     io::{BufReader, BufWriter, Read, Write},
-    net::{TcpListener, TcpStream, ToSocketAddrs},
+    net::{Shutdown, TcpListener, TcpStream, ToSocketAddrs},
 };
 
 use crate::{serde, KvsEngine, Request, Response};
@@ -44,11 +44,9 @@ impl<'ks, E: KvsEngine> KvsServer<'ks, E> {
 
     /// Tcp handle
     fn handler(&mut self, stream: &TcpStream) -> Result<()> {
-        let mut buff = [0; 1024];
         let mut reader = BufReader::new(stream);
-        let n = reader.read(&mut buff)?;
-
-        let buf = String::from_utf8_lossy(&buff[..n]);
+        let mut buf = String::new();
+        reader.read_to_string(&mut buf)?;
 
         info!(self.logger, "Recieved: {:?}", &buf);
 
@@ -62,6 +60,7 @@ impl<'ks, E: KvsEngine> KvsServer<'ks, E> {
         let mut writer = BufWriter::new(stream);
         writer.write_all(serde::to_string(&response)?.as_bytes())?;
         writer.flush()?;
+        stream.shutdown(Shutdown::Write)?;
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 use std::{
     io::{Read, Write},
-    net::{TcpStream, ToSocketAddrs},
+    net::{Shutdown, TcpStream, ToSocketAddrs},
 };
 
 use crate::{serde, KvsError, Request, Response, Result};
@@ -24,6 +24,7 @@ impl KvsClient {
         self.stream
             .write_all(serde::to_string(&request)?.as_bytes())?;
         self.stream.flush()?;
+        self.stream.shutdown(Shutdown::Write)?;
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
@@ -40,6 +41,7 @@ impl KvsClient {
         self.stream
             .write_all(serde::to_string(&request)?.as_bytes())?;
         self.stream.flush()?;
+        self.stream.shutdown(Shutdown::Write)?;
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
@@ -56,6 +58,7 @@ impl KvsClient {
         self.stream
             .write_all(serde::to_string(&request)?.as_bytes())?;
         self.stream.flush()?;
+        self.stream.shutdown(Shutdown::Write)?;
 
         let mut buf = String::new();
         self.stream.read_to_string(&mut buf)?;
