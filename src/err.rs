@@ -27,6 +27,9 @@ pub enum KvsError {
     /// Logger initial errors
     #[error("Logger initial errors: {0:?}")]
     LoggerError(#[from] sloggers::Error),
+    /// Sled errors
+    #[error("Sled errors: {0:?}")]
+    SledError(#[from] sled::Error),
     /// Key does not exist
     #[error("Key not found")]
     KeyNotFound,
