@@ -10,4 +10,5 @@
 **/*.rs.bk
 
 /log/
+/store/
 engine
