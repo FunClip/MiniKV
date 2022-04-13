@@ -9,8 +9,8 @@ use crate::err::KvsError;
 use crate::KvsEngine;
 use crate::Result;
 
-const COMPACTION_THRESHOLD: u64 = 1024;
-const BLOCK_THRESHOLD: u64 = 1024;
+const COMPACTION_THRESHOLD: u64 = 1024 * 1024;
+const BLOCK_THRESHOLD: u64 = 1024 * 1024 * 256;
 
 /// The `KvStore` stores key-value pairs
 ///

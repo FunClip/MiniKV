@@ -75,20 +75,18 @@ fn run_client(opt: Opt) -> kvs::Result<()> {
         SubCommand::Set { key, value, addr } => {
             let mut client = kvs::KvsClient::new(addr)?;
             client.set(key, value)?;
-            println!("Set success!");
         }
         SubCommand::Get { key, addr } => {
             let mut client = kvs::KvsClient::new(addr)?;
             if let Some(value) = client.get(key)? {
-                println!("The value is: {}", value);
+                println!("{}", value);
             } else {
-                return Err(KvsError::KeyNotFound);
+                println!("{}", KvsError::KeyNotFound);
             }
         }
         SubCommand::Rm { key, addr } => {
             let mut client = kvs::KvsClient::new(addr)?;
             client.remove(key)?;
-            println!("Remove success!");
         }
     }
     Ok(())
