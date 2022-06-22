@@ -8,6 +8,7 @@ mod kvse;
 mod proto;
 mod serde;
 mod server;
+pub mod thread_pool;
 
 pub use client::KvsClient;
 pub use err::KvsError;
