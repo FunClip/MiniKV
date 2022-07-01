@@ -3,6 +3,9 @@
 
 use crate::Result;
 
+mod naive_thread_pool;
+pub use naive_thread_pool::NaiveThreadPool;
+
 /// The trait that thread pools in `kvs` must implement
 pub trait ThreadPool {
 
