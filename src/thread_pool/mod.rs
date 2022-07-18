@@ -4,7 +4,11 @@
 use crate::Result;
 
 mod naive_thread_pool;
-pub use naive_thread_pool::NaiveThreadPool;
+mod shared_queue;
+mod rayon;
+pub use self::naive_thread_pool::NaiveThreadPool;
+pub use self::shared_queue::SharedQueueThreadPool;
+pub use self::rayon::RayonThreadPool;
 
 /// The trait that thread pools in `kvs` must implement
 pub trait ThreadPool {

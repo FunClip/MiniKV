@@ -25,6 +25,7 @@ sloggers = "2.1.1"
 slog = "2.7.0"
 sled = "0.34.7"
 evmap = "10.0.2"
+rayon = "1.5.3"
 
 [dev-dependencies]
 assert_cmd = "0.11"

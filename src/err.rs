@@ -39,6 +39,9 @@ pub enum KvsError {
     /// Unexpected command
     #[error("Unexpected command")]
     UnexpectedCommand,
+    /// `rayon::ThreadPool` building error
+    #[error("`rayon::ThreadPool` building error: {0:?}")]
+    RayonError(#[from] rayon::ThreadPoolBuildError),
 }
 
 impl ser::Error for KvsError {

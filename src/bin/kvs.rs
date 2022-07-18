@@ -47,11 +47,11 @@ fn main() -> kvs::Result<()> {
     let opt = Opt::parse();
     match opt.sub_command {
         SubCommand::Set { key, value } => {
-            let mut store = kvs::KvStore::open(current_dir()?)?;
+            let store = kvs::KvStore::open(current_dir()?)?;
             store.set(key, value)?;
         }
         SubCommand::Get { key } => {
-            let mut store = kvs::KvStore::open(current_dir()?)?;
+            let store = kvs::KvStore::open(current_dir()?)?;
             match store.get(key) {
                 Ok(Some(value)) => print!("{}", value),
                 Ok(None) | Err(kvs::KvsError::KeyNotFound) => {
@@ -62,7 +62,7 @@ fn main() -> kvs::Result<()> {
             }
         }
         SubCommand::Rm { key } => {
-            let mut store = kvs::KvStore::open(current_dir()?)?;
+            let store = kvs::KvStore::open(current_dir()?)?;
             match store.remove(key) {
                 Err(kvs::KvsError::KeyNotFound) => {
                     print!("Key not found");
