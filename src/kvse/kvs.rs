@@ -1,9 +1,12 @@
+use evmap::{ReadHandle, WriteHandle, ShallowCopy};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fs::{self, copy, remove_dir_all, remove_file, File};
-use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
+use std::fs::{self, remove_dir_all, File};
+use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write, Read};
+use std::mem::ManuallyDrop;
+use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use crate::err::KvsError;
 use crate::KvsEngine;
@@ -25,56 +28,44 @@ const BLOCK_THRESHOLD: u64 = 1024 * 1024 * 256;
 /// let val = store.get(String::from("key"));
 /// assert_eq!(val, Some(String::from("value")));
 /// ```
+#[derive(Clone)]
 pub struct KvStore {
-    writer: BufWriter<File>,
-    readers: Vec<BufReader<File>>,
-    current: u64,
-    index: BTreeMap<String, Postion>,
-    uncompacted: u64,
+    writer: Arc<Mutex<KvStoreWriter>>,
+    reader: KvStoreReader,
     path: PathBuf,
 }
 
-impl KvsEngine for KvStore {
-    /// Set the value of a string key to a string.
-    ///
-    /// If the key exists, the value will be overwritten.
-    fn set(&mut self, key: String, value: String) -> Result<()> {
-        let mut cmd = serde_json::to_string(&Command::Set {
-            key: key.clone(),
-            value,
-        })?;
-        cmd += "\n";
-        let position = self.writer.stream_position()?;
-        let size = self.writer.write(cmd.as_bytes())?;
-        let file = self.current - 1;
-        self.writer.flush()?;
+/// `KvStoreReader` hold the read handle of index 
+/// which could shared by thread with `clone()` method
+#[derive(Clone)]
+struct KvStoreReader(ReadHandle<String, Position>);
 
-        if let Some(pos) = self.index.insert(
-            key,
-            Postion {
-                file,
-                position,
-                size: size as u64,
-            },
-        ) {
-            self.uncompacted += pos.size;
-        }
+/// `KvStoreWriter` hold the write handle of index
+/// Only synchronous access
+struct KvStoreWriter {
+    writer: BufWriter<File>,
+    current_block: u64,
+    uncompacted: u64,
+    gen: u64,
+    index: WriteHandle<String, Position>,
+    reader: KvStoreReader,
+    path: PathBuf,
+}
 
-        self.check()?;
+impl Deref for KvStoreReader {
+    type Target = ReadHandle<String, Position>;
 
-        Ok(())
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    /// Get the string value of a given string key
-    ///
-    /// Return `None` if the key doesn't exist.
-    fn get(&mut self, key: String) -> Result<Option<String>> {
-        match self.index.get(&key) {
+impl KvStoreReader {
+    fn get(&self, key: String, path: &PathBuf) -> Result<Option<String>> {
+        match self.0.get_one(&key) {
             Some(pos) => {
-                let mut buf = String::new();
-                let reader = self.readers.get_mut(pos.file as usize).unwrap();
-                reader.seek(SeekFrom::Start(pos.position))?;
-                reader.read_line(&mut buf)?;
+                let buf = read_string_from(path.join(get_file_path(pos.gen, pos.file)), pos.position, pos.size)?;
+
                 match serde_json::from_str(&buf).unwrap() {
                     Command::Set { key: _, value } => Ok(Some(value)),
                     Command::Rm { key: _ } => unreachable!(),
@@ -83,22 +74,135 @@ impl KvsEngine for KvStore {
             None => Ok(None),
         }
     }
+}
+
+impl KvStoreWriter {
+    fn set(&mut self, key: String, value: String) -> Result<()> {
+        let position = self.write_cmd_to(Command::Set {
+            key: key.clone(),
+            value,
+        })?;
+        
+        self.index.update(key.clone(), position);
+
+        if let Some(pos) = self.reader.get_one(&key) {
+            self.uncompacted += pos.size;
+        }
+
+        self.index.refresh();
+        self.try_compact()?;
+
+        Ok(())
+    }
+
+    fn new_block(&mut self) -> Result<()> {
+        self.current_block += 1;
+
+        self.writer = BufWriter::new(File::create(self.path.join(get_file_path(self.gen, self.current_block)))?);
+
+        Ok(())
+    }
+
+    fn remove(&mut self, key: String) -> Result<()> {
+        let exist_size  = if let Some(pos) = self.reader.get_one(&key) {
+            pos.size
+        } else {
+            0
+        };
+        if exist_size != 0 {
+
+            let pos = self.write_cmd_to(Command::Rm { key: key.clone() })?;
+            self.index.empty(key);
+
+            self.uncompacted += exist_size + pos.size as u64;
+
+            self.index.refresh();
+            self.try_compact()?;
+            
+            Ok(())
+        } else {
+            Err(KvsError::KeyNotFound)
+        }
+    }
+
+    fn write_cmd_to(&mut self, cmd: Command) -> Result<Position> {
+        let mut cmd = serde_json::to_string(&cmd)?;
+        cmd += "\n";
+
+        self.write_string_to(cmd)
+    }
+
+    fn write_string_to(&mut self, s: String) -> Result<Position> {
+
+        if s.len() as u64 + self.writer.stream_position()? > BLOCK_THRESHOLD {
+            self.new_block()?;
+        }
+
+        let position = self.writer.stream_position()?;
+        let size = self.writer.write(s.as_bytes())?;
+        let file = self.current_block;
+
+        self.writer.flush()?;
+
+        Ok(Position {
+            file,
+            position,
+            size: size as u64,
+            gen: self.gen
+        })
+    }
+
+    fn try_compact(&mut self) -> Result<()> {
+        if self.uncompacted > COMPACTION_THRESHOLD {
+            // Create new genaration of store
+            self.gen += 1;
+            let new_generation_path = self.path.join(get_store_dir_by(self.gen));
+            if new_generation_path.exists() {
+                fs::remove_dir_all(&new_generation_path)?;
+            }
+            fs::create_dir_all(&new_generation_path)?;
+
+            self.uncompacted = 0;
+            self.current_block = 0;
+            self.writer = BufWriter::new(File::create(get_file_path(self.gen, self.current_block))?);
+
+            let index_reader = self.reader.clone();
+            for (key, value) in index_reader.read().unwrap().iter() {
+                let pos = value.get_one().unwrap();
+                let buf = read_string_from(get_file_path(pos.gen, pos.file).into(), pos.position, pos.size)?;
+                let new_position = self.write_string_to(buf+"\n")?;
+                self.index.update(key.clone(), new_position);
+            }
+
+            self.index.refresh();
+
+            if self.gen > 2 && self.path.join(get_store_dir_by(self.gen - 2)).exists() {
+                remove_dir_all(self.path.join(get_store_dir_by(self.gen - 2)))?;
+            }
+            
+        }
+        Ok(())
+    }
+}
+
+impl KvsEngine for KvStore {
+    /// Set the value of a string key to a string.
+    ///
+    /// If the key exists, the value will be overwritten.
+    fn set(&self, key: String, value: String) -> Result<()> {
+        self.writer.lock().unwrap().set(key, value)
+    }
+
+    /// Get the string value of a given string key
+    ///
+    /// Return `None` if the key doesn't exist.
+    fn get(&self, key: String) -> Result<Option<String>> {
+        self.reader.get(key, &self.path)
+    }
 
     /// Remove a given key.
-    fn remove(&mut self, key: String) -> Result<()> {
-        match self.index.remove(&key) {
-            Some(pos) => {
-                let mut cmd = serde_json::to_string(&Command::Rm { key: key.clone() })?;
-                cmd += "\n";
-                self.writer.stream_position()?;
-                let size = self.writer.write(cmd.as_bytes())?;
-                self.writer.flush()?;
-                self.uncompacted += pos.size + size as u64;
-                self.check()?;
-                Ok(())
-            }
-            None => Err(KvsError::KeyNotFound),
-        }
+    fn remove(&self, key: String) -> Result<()> {
+        self.writer.lock().unwrap().remove(key)
     }
 }
 
@@ -111,138 +215,48 @@ impl KvStore {
     ///
     ///
     pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
-        let mut readers: Vec<BufReader<File>> = Vec::new();
-        let mut current = 0u64;
+        let (index_r, mut index) = evmap::new();
         let mut uncompacted = 0u64;
-        let mut index: BTreeMap<String, Postion> = BTreeMap::new();
-
         let path = path.into();
-        fs::create_dir_all(&path)?;
-        let files = get_log_files(&path)?;
 
-        // create BufReader from files
-        for file in &files {
-            current += 1;
-            readers.push(BufReader::new(File::open(file)?))
-        }
+        let gen = get_generation(&path)?;
+
+        let files = get_log_files(&path.join(get_store_dir_by(gen)))?;
+        let current_block = files.len() as u64;
 
         // build index from readers
-        uncompacted += load_index_from_readers(&mut readers, &mut index)?;
+        uncompacted += load_index_from_files(&files, &mut index, gen)?;
 
         // create BufWriter
-        let mut writer = if current == 0
-            || readers[(current - 1) as usize].stream_position()? >= BLOCK_THRESHOLD
-        {
-            current += 1;
-            let f_w = File::create(&path.join(format!("{}.log", current)))?;
-            let f_r = File::open(&path.join(format!("{}.log", current)))?;
-            readers.push(BufReader::new(f_r));
-            BufWriter::new(f_w)
+        let mut writer = if files.is_empty() {
+            BufWriter::new(File::options().write(true).open(
+                path.join(get_file_path(gen, 0))
+            )?)
         } else {
             BufWriter::new(
                 File::options()
                     .write(true)
-                    .open(&files[(current - 1) as usize])?,
+                    .open(&files[(current_block - 1) as usize])?,
             )
         };
 
         writer.seek(SeekFrom::End(0))?;
 
+        let reader = KvStoreReader(index_r);
+
         Ok(KvStore {
-            writer,
-            readers,
-            current,
-            index,
-            uncompacted,
-            path,
+            writer: Arc::new(Mutex::new(KvStoreWriter {
+                writer,
+                current_block,
+                uncompacted,
+                gen,
+                index,
+                path: path.to_owned(),
+                reader: reader.clone()
+            })),
+            reader,
+            path: path.to_owned()
         })
-    }
-
-    /// Check if compaction or new block(file) is needed
-    fn check(&mut self) -> Result<()> {
-        if self.uncompacted >= COMPACTION_THRESHOLD {
-            self.compact()?;
-        }
-
-        if self.writer.stream_position()? >= BLOCK_THRESHOLD {
-            self.current += 1;
-            let f_w = File::create(&self.path.join(format!("{}.log", self.current)))?;
-            let f_r = File::open(&self.path.join(format!("{}.log", self.current)))?;
-            self.readers.push(BufReader::new(f_r));
-            self.writer = BufWriter::new(f_w)
-        }
-
-        Ok(())
-    }
-
-    /// Compact current log blocks(files)
-    fn compact(&mut self) -> Result<()> {
-        let tmp_path = self.path.join("tmp");
-        fs::create_dir_all(&tmp_path)?;
-
-        let mut block_num = 1;
-        self.writer = BufWriter::new(File::create(&tmp_path.join(format!("{}.log", block_num)))?);
-
-        // Write datas currently in `index` to new logs file
-        for pos in &mut self.index.values_mut() {
-            if self.writer.stream_position()? >= BLOCK_THRESHOLD {
-                block_num += 1;
-                self.writer =
-                    BufWriter::new(File::create(&tmp_path.join(format!("{}.log", block_num)))?);
-            }
-            let mut buf = String::new();
-            let reader = self.readers.get_mut(pos.file as usize).unwrap();
-            reader.seek(SeekFrom::Start(pos.position))?;
-            reader.read_line(&mut buf)?;
-            self.writer.write_all(buf.as_bytes())?;
-            self.writer.flush()?;
-        }
-
-        self.readers.clear();
-        self.index.clear();
-
-        // Delete old log files
-        for file in get_log_files(&self.path)? {
-            remove_file(file)?;
-        }
-
-        // Copy new log files to workdir
-        for file in get_log_files(&tmp_path)? {
-            copy(&file, &self.path.join(&file.file_name().unwrap()))?;
-        }
-
-        // Setup from new log files
-        self.current = 0;
-        let files = get_log_files(&self.path)?;
-        for file in &files {
-            self.current += 1;
-            self.readers.push(BufReader::new(File::open(file)?))
-        }
-
-        self.uncompacted = load_index_from_readers(&mut self.readers, &mut self.index)?;
-
-        self.writer =
-            if self.readers[(self.current - 1) as usize].stream_position()? >= BLOCK_THRESHOLD {
-                self.current += 1;
-                let f_w = File::create(&self.path.join(format!("{}.log", self.current)))?;
-                let f_r = File::open(&self.path.join(format!("{}.log", self.current)))?;
-                self.readers.push(BufReader::new(f_r));
-                BufWriter::new(f_w)
-            } else {
-                BufWriter::new(
-                    File::options()
-                        .write(true)
-                        .open(&files[(self.current - 1) as usize])?,
-                )
-            };
-
-        self.writer.seek(SeekFrom::End(0))?;
-
-        self.uncompacted = 0;
-
-        remove_dir_all(tmp_path)?;
-
-        Ok(())
     }
 }
 
@@ -263,11 +277,37 @@ enum Command {
     },
 }
 
-/// Log entry's postion in files
-struct Postion {
+/// Log entry's position in files
+#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+struct Position {
+    gen: u64,
     file: u64,
     position: u64,
     size: u64,
+}
+
+impl ShallowCopy for Position {
+    unsafe fn shallow_copy(&self) -> ManuallyDrop<Self> {
+        ManuallyDrop::new(*self)
+    }
+}
+
+fn get_file_path(gen: u64, file: u64) -> String {
+    format!("gen_{}/{}.log", gen, file)
+}
+
+fn get_store_dir_by(gen: u64) -> String {
+    format!("gen_{}", gen)
+}
+
+fn read_string_from(file_path: PathBuf, position: u64, size: u64) -> Result<String> {
+    let mut buf = String::new();
+    let mut reader = File::open(file_path)?;
+
+    reader.seek(SeekFrom::Start(position))?;
+    reader.take(size).read_to_string(&mut buf)?;
+
+    Ok(buf)
 }
 
 fn get_log_files(path: &Path) -> Result<Vec<PathBuf>> {
@@ -280,12 +320,37 @@ fn get_log_files(path: &Path) -> Result<Vec<PathBuf>> {
     Ok(log_files)
 }
 
-fn load_index_from_readers(
-    readers: &mut Vec<BufReader<File>>,
-    index: &mut BTreeMap<String, Postion>,
+fn get_generation(path: &Path) -> Result<u64> {
+    if !path.exists() {
+        fs::create_dir_all(get_store_dir_by(0))?;
+        return Ok(0);
+    }
+    let gens = fs::read_dir(path)?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_dir() && e.path().file_name().is_some())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .filter_map(|e| e.strip_prefix("gen_").and_then(|s| s.parse::<u64>().ok()))
+        .collect::<Vec<u64>>();
+    
+    match gens.len() {
+        0 => {
+            fs::create_dir_all(get_store_dir_by(0))?;
+            Ok(0)
+        }
+        1 => Ok(gens[0]),
+        2 => Ok(gens[1]),
+        _ => Ok(gens[gens.len()-2])
+    }
+}
+
+fn load_index_from_files(
+    files: &Vec<PathBuf>,
+    index: &mut WriteHandle<String, Position>,
+    gen: u64
 ) -> Result<u64> {
     let mut uncompacted = 0u64;
-    for (i, reader) in readers.iter_mut().enumerate() {
+    for (i, file) in files.iter().enumerate() {
+        let mut reader = BufReader::new(File::open(file)?);
         loop {
             let mut buf = String::new();
             let position = reader.stream_position()?;
@@ -295,23 +360,29 @@ fn load_index_from_readers(
             }
             match serde_json::from_str::<Command>(buf.trim_end())? {
                 Command::Set { key, value: _ } => {
-                    if let Some(pos) = index.insert(
-                        key,
-                        Postion {
+                    index.update(key.clone(),
+                        Position {
+                            gen,
                             file: i as u64,
                             position,
                             size: size as u64,
-                        },
-                    ) {
+                        });
+                    
+                    if let Some(pos) = index.get_one(&key){
                         uncompacted += pos.size;
                     }
                 }
                 Command::Rm { key } => {
-                    if let Some(pos) = index.remove(&key) {
-                        uncompacted += pos.size;
-                    }
+                    let exist_size  = if let Some(pos) = index.get_one(&key) {
+                        pos.size
+                    } else {
+                        0
+                    };
+                    index.empty(key);
+                    uncompacted += size as u64 + exist_size;
                 }
             }
+            index.refresh();
         }
     }
 
