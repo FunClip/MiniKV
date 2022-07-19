@@ -9,7 +9,8 @@ use std::{fs, net};
 
 use clap::ArgEnum;
 use clap::Parser;
-use kvs::{KvStore, KvsError, KvsServer, Result, SledKvsEngine};
+use kvs::thread_pool::ThreadPool;
+use kvs::{KvStore, KvsError, KvsServer, Result, SledKvsEngine, thread_pool};
 
 use slog::{info, Logger};
 use sloggers::terminal::{Destination, TerminalLoggerBuilder};
@@ -128,6 +129,7 @@ fn save_selected_engine(path: impl Into<PathBuf>, engine: &Engine) -> Result<()>
 fn run_server(logger: Logger, opt: Opt) -> Result<()> {
     let addr = opt.addr;
     let engine = opt.engine.unwrap();
+    let pool = thread_pool::SharedQueueThreadPool::new(8)?;
 
     info!(logger, "kvs-server version: {}", env!("CARGO_PKG_VERSION"));
     info!(logger, "Start on `{}` with engine `{}`", addr, engine);
@@ -136,10 +138,10 @@ fn run_server(logger: Logger, opt: Opt) -> Result<()> {
 
     match engine {
         Engine::Kvs => {
-            KvsServer::new(&logger, KvStore::open(dir)?)?.run(addr)?;
+            KvsServer::new(&logger, KvStore::open(dir)?, pool)?.run(addr)?;
         }
         Engine::Sled => {
-            KvsServer::new(&logger, SledKvsEngine::open(dir)?)?.run(addr)?;
+            KvsServer::new(&logger, SledKvsEngine::open(dir)?, pool)?.run(addr)?;
         }
     }
 
