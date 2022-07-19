@@ -1,9 +1,12 @@
-use std::{thread::{JoinHandle, self}, collections::VecDeque, sync::{Mutex, Arc}, panic};
+use std::{
+    collections::VecDeque,
+    panic,
+    sync::{Arc, Mutex},
+    thread::{self, JoinHandle},
+};
 
 use crate::thread_pool::ThreadPool;
 use crate::Result;
-
-
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -11,7 +14,7 @@ enum Task {
     Runable(Job),
     Exit,
 }
-/// 
+///
 pub struct SharedQueueThreadPool {
     thread_handles: Vec<JoinHandle<()>>,
     task_queue: Arc<Mutex<VecDeque<Task>>>,
@@ -20,22 +23,30 @@ pub struct SharedQueueThreadPool {
 impl ThreadPool for SharedQueueThreadPool {
     fn new(threads: u32) -> Result<Self>
     where
-        Self: Sized {
-            let mut thread_handles = Vec::with_capacity(threads as usize);
-            let task_queue = Arc::new(Mutex::new(VecDeque::new()));
+        Self: Sized,
+    {
+        let mut thread_handles = Vec::with_capacity(threads as usize);
+        let task_queue = Arc::new(Mutex::new(VecDeque::new()));
 
-            for _ in 0..threads {
-                let queue = Arc::clone(&task_queue);
-                thread_handles.push(thread::spawn(move || task_runner(queue)));
-            }
+        for _ in 0..threads {
+            let queue = Arc::clone(&task_queue);
+            thread_handles.push(thread::spawn(move || task_runner(queue)));
+        }
 
-            Ok(SharedQueueThreadPool { thread_handles, task_queue })
+        Ok(SharedQueueThreadPool {
+            thread_handles,
+            task_queue,
+        })
     }
 
     fn spawn<F>(&self, job: F)
     where
-        F: FnOnce() + Send + 'static {
-            self.task_queue.lock().unwrap().push_back(Task::Runable(Box::new(job)));
+        F: FnOnce() + Send + 'static,
+    {
+        self.task_queue
+            .lock()
+            .unwrap()
+            .push_back(Task::Runable(Box::new(job)));
     }
 }
 
@@ -69,8 +80,7 @@ fn task_runner(queue: Arc<Mutex<VecDeque<Task>>>) {
         });
         if result.is_err() {
             continue;
-        }
-        else if !result.unwrap() {
+        } else if !result.unwrap() {
             break;
         }
     }
