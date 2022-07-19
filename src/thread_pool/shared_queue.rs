@@ -16,7 +16,7 @@ enum Task {
 }
 /// A thread pool implemented with a shared queue
 /// 
-/// Note: using `unwind` catch panic in thread
+/// Note: using `catch_unwind` catch panic in thread
 pub struct SharedQueueThreadPool {
     thread_handles: Vec<JoinHandle<()>>,
     task_queue: Arc<Mutex<VecDeque<Task>>>,
