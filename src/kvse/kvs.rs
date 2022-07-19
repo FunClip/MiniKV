@@ -164,19 +164,19 @@ impl KvStoreWriter {
 
             self.uncompacted = 0;
             self.current_block = 0;
-            self.writer = BufWriter::new(File::create(get_file_path(self.gen, self.current_block))?);
+            self.writer = BufWriter::new(File::create(self.path.join(get_file_path(self.gen, self.current_block)))?);
 
             let index_reader = self.reader.clone();
             for (key, value) in index_reader.read().unwrap().iter() {
                 let pos = value.get_one().unwrap();
-                let buf = read_string_from(get_file_path(pos.gen, pos.file).into(), pos.position, pos.size)?;
-                let new_position = self.write_string_to(buf+"\n")?;
+                let buf = read_string_from(self.path.join(get_file_path(pos.gen, pos.file)), pos.position, pos.size)?;
+                let new_position = self.write_string_to(buf)?;
                 self.index.update(key.clone(), new_position);
             }
 
             self.index.refresh();
 
-            if self.gen > 2 && self.path.join(get_store_dir_by(self.gen - 2)).exists() {
+            if self.gen > 1 && self.path.join(get_store_dir_by(self.gen - 2)).exists() {
                 remove_dir_all(self.path.join(get_store_dir_by(self.gen - 2)))?;
             }
             
@@ -331,13 +331,14 @@ fn get_generation(path: &Path) -> Result<u64> {
         fs::create_dir_all(path.join(get_store_dir_by(0)))?;
         return Ok(0);
     }
-    let gens = fs::read_dir(path)?
+    let mut gens = fs::read_dir(path)?
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_dir() && e.path().file_name().is_some())
         .filter_map(|e| e.file_name().into_string().ok())
         .filter_map(|e| e.strip_prefix("gen_").and_then(|s| s.parse::<u64>().ok()))
         .collect::<Vec<u64>>();
-    
+    gens.sort();
+
     match gens.len() {
         0 => {
             fs::create_dir_all(path.join(get_store_dir_by(0)))?;
