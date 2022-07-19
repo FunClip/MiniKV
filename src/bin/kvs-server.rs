@@ -94,7 +94,7 @@ fn default_engine(opt: &mut Opt) -> Result<()> {
         if opt.engine.is_none() {
             opt.engine = Some(DEFAULT_ENGINE);
         }
-        save_selected_engine(&engine_file, &opt.engine.as_ref().unwrap())?;
+        save_selected_engine(&engine_file, opt.engine.as_ref().unwrap())?;
         return Ok(());
     }
 

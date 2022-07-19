@@ -61,7 +61,7 @@ impl Deref for KvStoreReader {
 }
 
 impl KvStoreReader {
-    fn get(&self, key: String, path: &PathBuf) -> Result<Option<String>> {
+    fn get(&self, key: String, path: &Path) -> Result<Option<String>> {
         match self.0.get_one(&key) {
             Some(pos) => {
                 let buf = read_string_from(path.join(get_file_path(pos.gen, pos.file)), pos.position, pos.size)?;
@@ -261,7 +261,7 @@ impl KvStore {
                 reader: reader.clone()
             })),
             reader,
-            path: path.to_owned()
+            path
         })
     }
 }
@@ -337,7 +337,7 @@ fn get_generation(path: &Path) -> Result<u64> {
         .filter_map(|e| e.file_name().into_string().ok())
         .filter_map(|e| e.strip_prefix("gen_").and_then(|s| s.parse::<u64>().ok()))
         .collect::<Vec<u64>>();
-    gens.sort();
+    gens.sort_unstable();
 
     match gens.len() {
         0 => {
@@ -351,7 +351,7 @@ fn get_generation(path: &Path) -> Result<u64> {
 }
 
 fn load_index_from_files(
-    files: &Vec<PathBuf>,
+    files: &[PathBuf],
     index: &mut WriteHandle<String, Position>,
     gen: u64
 ) -> Result<u64> {
