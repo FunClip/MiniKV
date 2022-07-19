@@ -129,7 +129,7 @@ fn save_selected_engine(path: impl Into<PathBuf>, engine: &Engine) -> Result<()>
 fn run_server(logger: Logger, opt: Opt) -> Result<()> {
     let addr = opt.addr;
     let engine = opt.engine.unwrap();
-    let pool = thread_pool::SharedQueueThreadPool::new(8)?;
+    let pool = thread_pool::SharedQueueThreadPool::new(num_cpus::get() as u32)?;
 
     info!(logger, "kvs-server version: {}", env!("CARGO_PKG_VERSION"));
     info!(logger, "Start on `{}` with engine `{}`", addr, engine);
