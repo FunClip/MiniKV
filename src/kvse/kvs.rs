@@ -220,23 +220,29 @@ impl KvStore {
         let path = path.into();
 
         let gen = get_generation(&path)?;
-
+  
         let files = get_log_files(&path.join(get_store_dir_by(gen)))?;
-        let current_block = files.len() as u64;
+        let current_block = if files.is_empty() {
+            0
+        } else {
+            (files.len() - 1) as u64
+        };
 
         // build index from readers
-        uncompacted += load_index_from_files(&files, &mut index, gen)?;
+        if !files.is_empty() {
+            uncompacted += load_index_from_files(&files, &mut index, gen)?;       
+        }
 
         // create BufWriter
         let mut writer = if files.is_empty() {
-            BufWriter::new(File::options().write(true).open(
+            BufWriter::new(File::options().create(true).write(true).open(
                 path.join(get_file_path(gen, 0))
             )?)
         } else {
             BufWriter::new(
                 File::options()
                     .write(true)
-                    .open(&files[(current_block - 1) as usize])?,
+                    .open(&files[current_block as usize])?,
             )
         };
 
@@ -322,7 +328,7 @@ fn get_log_files(path: &Path) -> Result<Vec<PathBuf>> {
 
 fn get_generation(path: &Path) -> Result<u64> {
     if !path.exists() {
-        fs::create_dir_all(get_store_dir_by(0))?;
+        fs::create_dir_all(path.join(get_store_dir_by(0)))?;
         return Ok(0);
     }
     let gens = fs::read_dir(path)?
@@ -334,7 +340,7 @@ fn get_generation(path: &Path) -> Result<u64> {
     
     match gens.len() {
         0 => {
-            fs::create_dir_all(get_store_dir_by(0))?;
+            fs::create_dir_all(path.join(get_store_dir_by(0)))?;
             Ok(0)
         }
         1 => Ok(gens[0]),
