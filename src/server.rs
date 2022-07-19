@@ -3,7 +3,7 @@ use std::{
     net::{Shutdown, TcpListener, TcpStream, ToSocketAddrs},
 };
 
-use crate::{serde, KvsEngine, Request, Response, thread_pool::ThreadPool};
+use crate::{serde, thread_pool::ThreadPool, KvsEngine, Request, Response};
 use slog::{error, info, Logger};
 
 use crate::Result;
@@ -18,7 +18,11 @@ pub struct KvsServer<'ks, E: KvsEngine, P: ThreadPool> {
 impl<'ks, E: KvsEngine, P: ThreadPool> KvsServer<'ks, E, P> {
     /// Create a instance of `KvsServer`
     pub fn new(logger: &'ks Logger, engine: E, pool: P) -> Result<Self> {
-        Ok(KvsServer { logger, engine, pool })
+        Ok(KvsServer {
+            logger,
+            engine,
+            pool,
+        })
     }
 
     /// Run the server by listening the `ip-port`
@@ -34,7 +38,7 @@ impl<'ks, E: KvsEngine, P: ThreadPool> KvsServer<'ks, E, P> {
                     );
                     let engine = self.engine.clone();
                     let logger = self.logger.clone();
-                    self.pool.spawn(move ||{
+                    self.pool.spawn(move || {
                         if let Err(e) = handler(engine, peer, &logger) {
                             error!(&logger, "Error in TCP handler: {}", e);
                         }
@@ -64,7 +68,7 @@ fn handler<E: KvsEngine>(engine: E, mut stream: TcpStream, logger: &Logger) -> R
             message: format!("{}", e),
         },
     };
-    
+
     stream.write_all(serde::to_string(&response)?.as_bytes())?;
     stream.shutdown(Shutdown::Write)?;
     Ok(())

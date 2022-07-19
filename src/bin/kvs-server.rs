@@ -10,7 +10,7 @@ use std::{fs, net};
 use clap::ArgEnum;
 use clap::Parser;
 use kvs::thread_pool::ThreadPool;
-use kvs::{KvStore, KvsError, KvsServer, Result, SledKvsEngine, thread_pool};
+use kvs::{thread_pool, KvStore, KvsError, KvsServer, Result, SledKvsEngine};
 
 use slog::{info, Logger};
 use sloggers::terminal::{Destination, TerminalLoggerBuilder};
