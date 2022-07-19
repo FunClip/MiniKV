@@ -18,12 +18,13 @@ const BLOCK_THRESHOLD: u64 = 1024 * 1024 * 256;
 /// The `KvStore` stores key-value pairs
 ///
 /// Key-value pairs are stored in memory by `HashMap` and not persisted in disk.
+/// - Support concorrent access with lock-free read operation
 ///
 /// Example:
 ///
 /// ```rust
 /// # use kvs::KvStore;
-/// let mut store = KvStore::new();
+/// let store = KvStore::new();
 /// store.set(String::from("key"), String::from("value"));
 /// let val = store.get(String::from("key"));
 /// assert_eq!(val, Some(String::from("value")));
@@ -156,6 +157,11 @@ impl KvStoreWriter {
         })
     }
 
+    /// Compaction steps:
+    /// 1. current `gen` add 1, and create a new directory
+    /// 2. reset some pointer and counter
+    /// 3. traverse index and write them into new directory
+    /// 4. delete second last backup
     fn try_compact(&mut self) -> Result<()> {
         if self.uncompacted > COMPACTION_THRESHOLD {
             // Create new genaration of store
@@ -166,12 +172,14 @@ impl KvStoreWriter {
             }
             fs::create_dir_all(&new_generation_path)?;
 
+            // reset some "pointer"
             self.uncompacted = 0;
             self.current_block = 0;
             self.writer = BufWriter::new(File::create(
                 self.path.join(get_file_path(self.gen, self.current_block)),
             )?);
 
+            // read from old index and write them into new generation store
             let index_reader = self.reader.clone();
             for (key, value) in index_reader.read().unwrap().iter() {
                 let pos = value.get_one().unwrap();
@@ -227,9 +235,9 @@ impl KvStore {
         let (index_r, mut index) = evmap::new();
         let mut uncompacted = 0u64;
         let path = path.into();
-
+        // get store generation of given path
         let gen = get_generation(&path)?;
-
+        // get block num of current generation
         let files = get_log_files(&path.join(get_store_dir_by(gen)))?;
         let current_block = if files.is_empty() {
             0
@@ -237,7 +245,7 @@ impl KvStore {
             (files.len() - 1) as u64
         };
 
-        // build index from readers
+        // build index from files
         if !files.is_empty() {
             uncompacted += load_index_from_files(&files, &mut index, gen)?;
         }
@@ -338,6 +346,11 @@ fn get_log_files(path: &Path) -> Result<Vec<PathBuf>> {
     Ok(log_files)
 }
 
+/// Get generation from existent store path
+/// - case 1: 0 generation dir, a new store
+/// - case 2: 1 generation dir, no compaction happened
+/// - case 3: 2 generation dirs, compaction happend and succeed
+/// - case 4: 3 generation dirs, compaction happend but not completed
 fn get_generation(path: &Path) -> Result<u64> {
     if !path.exists() {
         fs::create_dir_all(path.join(get_store_dir_by(0)))?;
@@ -362,6 +375,7 @@ fn get_generation(path: &Path) -> Result<u64> {
     }
 }
 
+/// Traverse log files and execute the command, build the index in memory
 fn load_index_from_files(
     files: &[PathBuf],
     index: &mut WriteHandle<String, Position>,
