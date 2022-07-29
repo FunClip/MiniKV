@@ -37,4 +37,8 @@ impl KvsEngine for SledKvsEngine {
         self.db.flush()?;
         Ok(())
     }
+
+    fn open(path: impl Into<PathBuf>) -> Result<Self> {
+        SledKvsEngine::open(path)
+    }
 }

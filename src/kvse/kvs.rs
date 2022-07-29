@@ -221,6 +221,11 @@ impl KvsEngine for KvStore {
     fn remove(&self, key: String) -> Result<()> {
         self.writer.lock().unwrap().remove(key)
     }
+
+    /// Open or create a `KvStore`
+    fn open(path: impl Into<PathBuf>) -> Result<Self> {
+        KvStore::open(path)
+    }
 }
 
 impl KvStore {

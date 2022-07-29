@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::Result;
 
 mod kvs;
@@ -19,4 +21,8 @@ pub trait KvsEngine: Clone + Send + 'static {
     /// Remove the value of a given key
     /// Return `KvsError::KeyNotFound` if the key does not exist
     fn remove(&self, key: String) -> Result<()>;
+
+    /// Open or create a store engine from given path
+    /// Return a `KvsEngine` with `Result` wrapper
+    fn open(path: impl Into<PathBuf>) -> Result<Self>;
 }
