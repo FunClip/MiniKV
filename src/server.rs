@@ -9,15 +9,15 @@ use slog::{error, info, Logger};
 use crate::Result;
 
 /// Key value store server
-pub struct KvsServer<'ks, E: KvsEngine, P: ThreadPool> {
-    logger: &'ks Logger,
+pub struct KvsServer<E: KvsEngine, P: ThreadPool> {
+    logger: Logger,
     engine: E,
     pool: P,
 }
 
-impl<'ks, E: KvsEngine, P: ThreadPool> KvsServer<'ks, E, P> {
+impl<E: KvsEngine, P: ThreadPool> KvsServer<E, P> {
     /// Create a instance of `KvsServer`
-    pub fn new(logger: &'ks Logger, engine: E, pool: P) -> Result<Self> {
+    pub fn new(logger: Logger, engine: E, pool: P) -> Result<Self> {
         Ok(KvsServer {
             logger,
             engine,
