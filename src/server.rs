@@ -1,6 +1,6 @@
 use std::{
     io::{BufReader, Read, Write},
-    net::{Shutdown, TcpListener, TcpStream, ToSocketAddrs},
+    net::{Shutdown, TcpListener, TcpStream, ToSocketAddrs, SocketAddr},
 };
 
 use crate::{serde, thread_pool::ThreadPool, KvsEngine, Request, Response};
@@ -13,22 +13,24 @@ pub struct KvsServer<E: KvsEngine, P: ThreadPool> {
     logger: Logger,
     engine: E,
     pool: P,
+    listener: TcpListener,
 }
 
 impl<E: KvsEngine, P: ThreadPool> KvsServer<E, P> {
     /// Create a instance of `KvsServer`
-    pub fn new(logger: Logger, engine: E, pool: P) -> Result<Self> {
+    pub fn new<A: ToSocketAddrs>(logger: Logger, engine: E, pool: P, addr: A) -> Result<Self> {
+        let listener = TcpListener::bind(addr)?;
         Ok(KvsServer {
             logger,
             engine,
             pool,
+            listener,
         })
     }
 
     /// Run the server by listening the `ip-port`
-    pub fn run<A: ToSocketAddrs>(&mut self, addr: A) -> Result<()> {
-        let listener = TcpListener::bind(addr)?;
-        for stream in listener.incoming() {
+    pub fn run(&mut self) -> Result<()> {
+        for stream in self.listener.incoming() {
             match stream {
                 Ok(peer) => {
                     info!(
@@ -51,6 +53,11 @@ impl<E: KvsEngine, P: ThreadPool> KvsServer<E, P> {
         }
 
         Ok(())
+    }
+
+    /// Get `ip:port` address
+    pub fn get_address(&self) -> SocketAddr {
+        self.listener.local_addr().unwrap()
     }
 }
 

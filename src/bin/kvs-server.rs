@@ -138,10 +138,10 @@ fn run_server(logger: Logger, opt: Opt) -> Result<()> {
 
     match engine {
         Engine::Kvs => {
-            KvsServer::new(logger, KvStore::open(dir)?, pool)?.run(addr)?;
+            KvsServer::new(logger, KvStore::open(dir)?, pool, addr)?.run()?;
         }
         Engine::Sled => {
-            KvsServer::new(logger, SledKvsEngine::open(dir)?, pool)?.run(addr)?;
+            KvsServer::new(logger, SledKvsEngine::open(dir)?, pool, addr)?.run()?;
         }
     }
 
